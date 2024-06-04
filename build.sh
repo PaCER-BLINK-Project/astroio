@@ -24,16 +24,17 @@ process_build_script_input group
 # that this script will generate.
 echo "Loading required modules ..."
 module reset
-module_load  blink_test_data/devel  cfitsio/4.1.0
+module_load  blink_test_data/devel rocm/5.7.3 cfitsio/4.3.0
 
 # cmake is only required at build time, so we use the normal module load
-module load cmake/3.24.3
+module load cmake/3.27.7
 # build your software..
 echo "Building the software.."
 
+echo "install dir is $INSTALL_DIR"
 [ -d build ] || mkdir build
 cd build
-cmake .. -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DCMAKE_BUILD_TYPE=Release
+cmake .. -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} -DUSE_HIP=ON -DCMAKE_CXX_COMPILER=hipcc -DCMAKE_BUILD_TYPE=Release
 make VERBOSE=1
 
 # Install the software
