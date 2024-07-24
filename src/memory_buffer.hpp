@@ -20,6 +20,33 @@ class MemoryBuffer {
      * 
     */
     MemoryBuffer(size_t n_elements, bool pinned, bool on_gpu) {
+        allocate(n_elements, pinned, on_gpu);
+    }
+
+    /**
+     * Default MemoryBuffer constructor creates a "null" object, with no memory allocation.
+     * Memory can be allocated later with `realloc`.
+     */
+    MemoryBuffer(){}
+
+    /**
+     * This conversion method allows MemoryBuffer objects to be tested in if statements.
+     * For instance, if(!mem_buffer) mem_buffer.allocate(...)
+     */
+    explicit operator bool() const {
+        return (_data == nullptr ? false : true);
+    }
+
+    /**
+     * @brief Allocates memory space for the `MemoryBuffer` object. If the object is already associated 
+     * with previously allocated memory, that memory allocation is deleted.
+     * @param n_elements Number of elements to allocate space for in the buffer.
+     * @param pinned Indicate whether the memory must be pinned (only for GPU enabled installations).
+     * @param on_gpu Indicate whether to allocate memory on GPU (`true`) or CPU (`false`). 
+     * 
+    */
+    void allocate(size_t n_elements, bool pinned, bool on_gpu){
+        this->~MemoryBuffer();
         #ifndef __GPU__
         if(on_gpu || pinned)
             throw std::invalid_argument { "MemoryBuffer constructor: cannot use `pinned` or `on_gpu` "
