@@ -24,10 +24,34 @@ class MemoryBuffer {
     }
 
     /**
-     * Default MemoryBuffer constructor creates a "null" object, with no memory allocation.
+     * @brief Default MemoryBuffer constructor creates a "null" object, with no memory allocation.
      * Memory can be allocated later with `realloc`.
      */
     MemoryBuffer(){}
+
+    /**
+     * @brief Create a new MemoryBuffer object by taking ownership of a pre-allocated array.
+     * @param buffer Pointer to a pre-allocated memory location the MemoryObject will handle.
+     * @param n_elements Number of elements in the buffer.
+     * @param pinned Indicate whether the memory is pinned (only for GPU enabled installations).
+     * @param on_gpu Indicate whether the memory is allocated on GPU (`true`) or CPU (`false`). 
+     */
+    MemoryBuffer(T *buffer, size_t n_elements, bool pinned, bool on_gpu){
+        #ifndef __GPU__
+        if(on_gpu || pinned)
+            throw std::invalid_argument { "MemoryBuffer constructor: cannot use `pinned` or `on_gpu` "
+            "on a CPU only build of the software." };
+        #endif
+        if(on_gpu && pinned)
+            throw std::invalid_argument { "MemoryBuffer constructor: gpu memory cannot be pinned." };
+        if(n_elements == 0) throw std::invalid_argument {"MemoryBuffer constructor: `n_elements` "
+        "must be a positive number."};
+        if(!buffer) throw std::invalid_argument {"MemoryBuffer constructor: won't accept a null pointer."};
+        this->_data = buffer;
+        this->n = n_elements;
+        this->_pinned = pinned;
+        this->_on_gpu = on_gpu;
+    }
 
     /**
      * This conversion method allows MemoryBuffer objects to be tested in if statements.
@@ -49,12 +73,12 @@ class MemoryBuffer {
         this->~MemoryBuffer();
         #ifndef __GPU__
         if(on_gpu || pinned)
-            throw std::invalid_argument { "MemoryBuffer constructor: cannot use `pinned` or `on_gpu` "
+            throw std::invalid_argument { "MemoryBuffer::allocate: cannot use `pinned` or `on_gpu` "
             "on a CPU only build of the software." };
         #endif
         if(on_gpu && pinned)
-            throw std::invalid_argument { "MemoryBuffer constructor: gpu memory cannot be pinned." };
-        if(n_elements == 0) throw std::invalid_argument {"MemoryBuffer constructor: `n_elements` "
+            throw std::invalid_argument { "MemoryBuffer::allocate: gpu memory cannot be pinned." };
+        if(n_elements == 0) throw std::invalid_argument {"MemoryBuffer::allocate: `n_elements` "
         "must be a positive number."};
         #ifdef __GPU__
         if(pinned) {
