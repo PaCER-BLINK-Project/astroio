@@ -1,5 +1,7 @@
 #ifndef __MEMORY_BUFFER_H__
 #define __MEMORY_BUFFER_H__
+
+#include <fstream>
 #include "gpu_macros.hpp"
 
 template <typename T>
@@ -128,6 +130,36 @@ class MemoryBuffer {
         }
         #endif
     }
+
+
+    /**
+     * @brief Dump contents to a binary file.
+     */
+    void dump(std::string filename) const {
+        std::ofstream outfile;
+        outfile.open(filename, std::ofstream::binary);
+        outfile.write(_data, n * sizeof(T));
+        if(!outfile){
+            throw std::runtime_error {"MemoryBuffer: error while dumping data to binary file."};
+        }
+        outfile.close();
+    }
+
+    /**
+     * @brief load data from binary file and instantiate a new class of MemoryBuffer.
+     */
+    static MemoryBuffer<T> from_dump(std::string filename) {
+        std::ifstream infile (filename, std::ifstream::binary);
+        // get size of file
+        infile.seekg(0, infile.end);
+        size_t size = infile.tellg();
+        infile.seekg(0);
+        char* buffer = new char[size];
+        infile.read (buffer, size);
+        infile.close();
+        return MemoryBuffer<T> {reinterpret_cast<T>(buffer), size / sizeof(T), false, false};
+    }
+
     /**
      * @return pointer to the raw array.
     */
