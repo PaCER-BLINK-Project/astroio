@@ -138,7 +138,7 @@ class MemoryBuffer {
     void dump(std::string filename) const {
         std::ofstream outfile;
         outfile.open(filename, std::ofstream::binary);
-        outfile.write(_data, n * sizeof(T));
+        outfile.write(reinterpret_cast<char*>(_data), n * sizeof(T));
         if(!outfile){
             throw std::runtime_error {"MemoryBuffer: error while dumping data to binary file."};
         }
@@ -157,7 +157,7 @@ class MemoryBuffer {
         char* buffer = new char[size];
         infile.read (buffer, size);
         infile.close();
-        return MemoryBuffer<T> {reinterpret_cast<T>(buffer), size / sizeof(T), false, false};
+        return MemoryBuffer<T> {reinterpret_cast<T*>(buffer), size / sizeof(T), false, false};
     }
 
     /**
