@@ -55,6 +55,8 @@ void __gpu_check_error(gpuError_t x, const char *file, int line);
 #define gpuSetDevice(...) GPU_CHECK_ERROR(cudaSetDevice(__VA_ARGS__))
 #define gpuDeviceGetAttribute(...) GPU_CHECK_ERROR(cudaDeviceGetAttribute(__VA_ARGS__))
 #define gpuDeviceAttributeWarpSize cudaDevAttrWarpSize
+#define gpuDeviceProp_t cudaDeviceProp_t
+#define gpuGetDeviceProperties(...) GPU_CHECK_ERROR(cudaGetDeviceProperties(__VA_ARGS__))
 #define __gpu_shfl_down(...) __shfl_down_sync(0xffffffff, __VA_ARGS__)
 
 #else
@@ -81,6 +83,9 @@ void __gpu_check_error(gpuError_t x, const char *file, int line);
 #define gpuSetDevice(...) GPU_CHECK_ERROR(hipSetDevice(__VA_ARGS__))
 #define gpuDeviceGetAttribute(...) GPU_CHECK_ERROR(hipDeviceGetAttribute(__VA_ARGS__))
 #define gpuDeviceAttributeWarpSize hipDeviceAttributeWarpSize
+#define gpuDeviceProp_t hipDeviceProp_t
+#define gpuGetDeviceProperties(...) GPU_CHECK_ERROR(hipGetDeviceProperties(__VA_ARGS__))
+
 #define __gpu_shfl_down(...) __shfl_down(__VA_ARGS__)
 
 #endif
