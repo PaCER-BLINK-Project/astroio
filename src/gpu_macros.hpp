@@ -33,6 +33,8 @@ void __gpu_check_error(gpuError_t x, const char *file, int line);
 
 #ifdef __NVCC__
 
+#define GPU_PREFIX cuda
+
 #define gpuMalloc(...) GPU_CHECK_ERROR(cudaMalloc(__VA_ARGS__))
 #define gpuHostAlloc(...) GPU_CHECK_ERROR(cudaHostAlloc(__VA_ARGS__, 0))
 #define gpuHostAllocDefault cudaHostAllocDefault
@@ -46,9 +48,14 @@ void __gpu_check_error(gpuError_t x, const char *file, int line);
 #define gpuFree(...) GPU_CHECK_ERROR(cudaFree(__VA_ARGS__))
 #define gpuHostFree(...) GPU_CHECK_ERROR(cudaFreeHost(__VA_ARGS__))
 #define gpuStream_t cudaStream_t
+#define gpuEvent_t cudaEvent_t
 #define gpuStreamCreate(...) GPU_CHECK_ERROR(cudaStreamCreate(__VA_ARGS__))
 #define gpuStreamDestroy(...) GPU_CHECK_ERROR(cudaStreamDestroy(__VA_ARGS__))
 #define gpuEventCreate(...) GPU_CHECK_ERROR(cudaEventCreate(__VA_ARGS__))
+#define gpuEventDestroy(...) GPU_CHECK_ERROR(cudaEventDestroy(__VA_ARGS__))
+#define gpuEventRecord(...) GPU_CHECK_ERROR(cudaEventRecord(__VA_ARGS__))
+#define gpuEventSynchronize(...) GPU_CHECK_ERROR(cudaEventSynchronize(__VA_ARGS__))
+#define gpuEventElapsedTime(...) GPU_CHECK_ERROR(cudaEventElapsedTime(__VA_ARGS__))
 #define gpuGetDeviceCount(...) GPU_CHECK_ERROR(cudaGetDeviceCount(__VA_ARGS__))
 #define gpuGetLastError cudaGetLastError
 #define gpuGetDevice(...) GPU_CHECK_ERROR(cudaGetDevice(__VA_ARGS__))
@@ -60,7 +67,6 @@ void __gpu_check_error(gpuError_t x, const char *file, int line);
 #define __gpu_shfl_down(...) __shfl_down_sync(0xffffffff, __VA_ARGS__)
 
 #else
-
 #define gpuMalloc(...) GPU_CHECK_ERROR(hipMalloc(__VA_ARGS__))
 #define gpuHostAlloc(...) GPU_CHECK_ERROR(hipHostMalloc(__VA_ARGS__, 0))
 #define gpuHostAllocDefault 0
@@ -74,9 +80,14 @@ void __gpu_check_error(gpuError_t x, const char *file, int line);
 #define gpuFree(...) GPU_CHECK_ERROR(hipFree(__VA_ARGS__))
 #define gpuHostFree(...) GPU_CHECK_ERROR(hipHostFree(__VA_ARGS__))
 #define gpuStream_t hipStream_t
+#define gpuEvent_t hipEvent_t
 #define gpuStreamCreate(...) GPU_CHECK_ERROR(hipStreamCreate(__VA_ARGS__))
 #define gpuStreamDestroy(...) GPU_CHECK_ERROR(hipStreamDestroy(__VA_ARGS__))
 #define gpuEventCreate(...) GPU_CHECK_ERROR(hipEventCreate(__VA_ARGS__))
+#define gpuEventDestroy(...) GPU_CHECK_ERROR(hipEventDestroy(__VA_ARGS__))
+#define gpuEventRecord(...) GPU_CHECK_ERROR(hipEventRecord(__VA_ARGS__))
+#define gpuEventSynchronize(...) GPU_CHECK_ERROR(hipEventSynchronize(__VA_ARGS__))
+#define gpuEventElapsedTime(...) GPU_CHECK_ERROR(hipEventElapsedTime(__VA_ARGS__))
 #define gpuGetDeviceCount(...) hipGetDeviceCount(__VA_ARGS__)
 #define gpuGetLastError hipGetLastError
 #define gpuGetDevice(...) GPU_CHECK_ERROR(hipGetDevice(__VA_ARGS__))
