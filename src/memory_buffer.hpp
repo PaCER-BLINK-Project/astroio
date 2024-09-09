@@ -17,12 +17,12 @@ class MemoryBuffer {
     /**
      * @brief Create a new MemoryBuffer object which can hold a pointer to GPU or CPU allocated memory.
      * @param n_elements Number of elements to allocate space for in the buffer.
-     * @param pinned Indicate whether the memory must be pinned (only for GPU enabled installations).
      * @param on_gpu Indicate whether to allocate memory on GPU (`true`) or CPU (`false`). 
+     * @param pinned Indicate whether the memory must be pinned (only for GPU enabled installations).
      * 
     */
-    MemoryBuffer(size_t n_elements, bool pinned, bool on_gpu) {
-        allocate(n_elements, pinned, on_gpu);
+    MemoryBuffer(size_t n_elements, bool on_gpu = false,  bool pinned = false) {
+        allocate(n_elements, on_gpu, pinned);
     }
 
     /**
@@ -35,10 +35,10 @@ class MemoryBuffer {
      * @brief Create a new MemoryBuffer object by taking ownership of a pre-allocated array.
      * @param buffer Pointer to a pre-allocated memory location the MemoryObject will handle.
      * @param n_elements Number of elements in the buffer.
-     * @param pinned Indicate whether the memory is pinned (only for GPU enabled installations).
      * @param on_gpu Indicate whether the memory is allocated on GPU (`true`) or CPU (`false`). 
+     * @param pinned Indicate whether the memory is pinned (only for GPU enabled installations).
      */
-    MemoryBuffer(T *buffer, size_t n_elements, bool pinned, bool on_gpu){
+    MemoryBuffer(T *buffer, size_t n_elements, bool on_gpu = false, bool pinned = false){
         #ifndef __GPU__
         if(on_gpu || pinned)
             throw std::invalid_argument { "MemoryBuffer constructor: cannot use `pinned` or `on_gpu` "
@@ -67,11 +67,11 @@ class MemoryBuffer {
      * @brief Allocates memory space for the `MemoryBuffer` object. If the object is already associated 
      * with previously allocated memory, that memory allocation is deleted.
      * @param n_elements Number of elements to allocate space for in the buffer.
-     * @param pinned Indicate whether the memory must be pinned (only for GPU enabled installations).
      * @param on_gpu Indicate whether to allocate memory on GPU (`true`) or CPU (`false`). 
+     * @param pinned Indicate whether the memory must be pinned (only for GPU enabled installations).
      * 
     */
-    void allocate(size_t n_elements, bool pinned, bool on_gpu){
+    void allocate(size_t n_elements, bool on_gpu = false, bool pinned = false){
         this->~MemoryBuffer();
         #ifndef __GPU__
         if(on_gpu || pinned)

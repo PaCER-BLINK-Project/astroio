@@ -41,7 +41,7 @@ void test_simply_writing_and_reading_fits_file(){
     const size_t nIntervals {(obsInfo.nTimesteps + 100 - 1) / 100};
     const size_t nValuesInTimeInterval {matrixSize * obsInfo.nFrequencies};
     const size_t outSize {nValuesInTimeInterval * nIntervals};
-    MemoryBuffer<std::complex<float>> xcorr (outSize, false, false);
+    MemoryBuffer<std::complex<float>> xcorr {outSize};
     for(unsigned long long i {0}; i < outSize; i++){
         xcorr[i].real(i % 20 + 1);
         xcorr[i].imag(i % 20 + 1);
