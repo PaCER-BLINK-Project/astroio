@@ -18,7 +18,7 @@
 #else
   // AMD / HIP :
   
-  #include <hipfft.h>
+  #include <hipfft/hipfft.h>
   
   #define gpufftComplex  hipfftComplex
   #define gpufftPlanMany hipfftPlanMany
