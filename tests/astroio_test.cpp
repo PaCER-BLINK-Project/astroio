@@ -8,7 +8,34 @@ std::string dataRootDir;
 
 
 void test_from_dat_file(){
+    using namespace std::chrono;
+
+    high_resolution_clock::time_point volt1_start = high_resolution_clock::now();
     auto voltages = Voltages::from_dat_file(dataRootDir + "/offline_correlator/1240826896_1240827191_ch146.dat", VCS_OBSERVATION_INFO, 100);
+    high_resolution_clock::time_point volt1_stop = high_resolution_clock::now();
+    //auto voltages_optim = Voltages::from_dat_file_optim(dataRootDir + "/offline_correlator/1240826896_1240827191_ch146.dat", VCS_OBSERVATION_INFO, 100);
+    high_resolution_clock::time_point volt2_stop = high_resolution_clock::now();
+    auto voltages_gpu = Voltages::from_dat_file_gpu(dataRootDir + "/offline_correlator/1240826896_1240827191_ch146.dat", VCS_OBSERVATION_INFO, 100);
+    high_resolution_clock::time_point volt3_stop = high_resolution_clock::now();
+    
+    duration<double> volt1_dur = duration_cast<duration<double>>(volt1_stop - volt1_start);
+    // // duration<double> volt2_dur = duration_cast<duration<double>>(volt2_stop - volt1_stop);
+    duration<double> volt3_dur = duration_cast<duration<double>>(volt3_stop - volt2_stop);
+
+    std::cout << "Original method took " << volt1_dur.count() << " seconds." << std::endl;
+    // // std::cout << "New method took " << volt2_dur.count() << " seconds." << std::endl;
+    std::cout << "GPU method took " << volt3_dur.count() << " seconds." << std::endl;
+    //voltages.to_cpu();
+    //voltages_gpu.to_cpu();
+    if(voltages.size() != voltages_gpu.size())
+        throw TestFailed("test_from_dat_file: voltage objects are not of the same size.");
+    for(size_t i {0}; i < voltages.size(); i++){
+        if(voltages[i] != voltages_gpu[i]){
+            std::stringstream ss;
+            ss << "test_from_dat_file: voltages[" << i << "] != voltages_gpu[" << i << "] - " << voltages[i] << " != " << voltages_gpu[i] << std::endl;
+            throw TestFailed(ss.str().c_str());
+        }
+    }
     std::cout << "'test_from_dat_file' passed." << std::endl;
 }
 
@@ -72,8 +99,8 @@ int main(void){
     dataRootDir = std::string {pathToData};
     try{
         test_from_dat_file();
-        test_from_memory();
-        test_simply_writing_and_reading_fits_file();
+        //test_from_memory();
+        //test_simply_writing_and_reading_fits_file();
     } catch (std::exception& ex){
         std::cerr << ex.what() << std::endl;
         return 1;

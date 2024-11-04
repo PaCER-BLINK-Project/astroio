@@ -129,6 +129,7 @@ class Voltages : public MemoryBuffer<std::complex<int8_t>> {
     static Voltages from_dat_file(const std::string& filename, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps, \
         bool use_pinned_mem = false);
 
+    static Voltages from_dat_file_gpu(const std::string& filename, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps, bool use_pinned_mem = false);
     /**
      * Read voltage data from a memory buffer.
      * Data in memory is ordered according to the following axes, from the slowest to the fastest:

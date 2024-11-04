@@ -94,7 +94,7 @@ Voltages Voltages::from_dat_file(const std::string& filename, const ObservationI
         We allocate slightly more memory than simply nComplexSamples so we can avoid dealing with
         the boundary condition happening when obsInfo.nTimesteps % nIntegrationSteps != 0. 
     */
-    MemoryBuffer<std::complex<int8_t>> mbVoltages {nIntegrationIntervals * samplesInTimeInterval, use_pinned_mem, false};
+    MemoryBuffer<std::complex<int8_t>> mbVoltages {nIntegrationIntervals * samplesInTimeInterval, true, false}; // use the XNACK feature
     auto voltages = mbVoltages.data();
     memset(voltages, 0, sizeof(std::complex<int8_t>) * nIntegrationIntervals * samplesInTimeInterval);
 
@@ -137,6 +137,107 @@ Voltages Voltages::from_dat_file(const std::string& filename, const ObservationI
 
 
 
+__global__ void dat_file_expansion_kernel(int8_t *input, size_t input_size, ObservationInfo obsInfo, unsigned int nIntegrationSteps, unsigned int edge, int8_t* output){
+
+    size_t start_index {blockDim.x * blockIdx.x + threadIdx.x};
+    size_t grid_size {gridDim.x * blockDim.x};
+    uint16_t *buffer = reinterpret_cast<uint16_t*>(input);
+    const size_t samplesInPol {nIntegrationSteps};
+    const size_t samplesInAntenna {samplesInPol * obsInfo.nPolarizations};
+    const size_t samplesInFrequency {samplesInAntenna * obsInfo.nAntennas};
+    const size_t samplesInTimeInterval {samplesInFrequency * obsInfo.nFrequencies};
+    const size_t nIntegrationIntervals {(obsInfo.nTimesteps + nIntegrationSteps - 1)/ nIntegrationSteps };
+    const size_t nTotalSamples {nIntegrationIntervals * samplesInTimeInterval};
+
+    int8_t expanded[4];
+
+    for(size_t idx {start_index}; idx < input_size / 2; idx += grid_size){
+        size_t sample_idx = idx * 2;
+        size_t a = idx % obsInfo.nAntennas;
+        size_t ch = (sample_idx / (obsInfo.nAntennas * obsInfo.nPolarizations)) % obsInfo.nFrequencies;
+        size_t currentTimeStep = sample_idx / (obsInfo.nAntennas * obsInfo.nPolarizations * obsInfo.nFrequencies);
+        size_t currentTimeInterval = currentTimeStep / nIntegrationSteps;
+        size_t currentIntegratorStep = currentTimeStep % nIntegrationSteps;
+
+        // set edge channels to 0
+        if(ch < edge || ch >= (obsInfo.nFrequencies - edge)){
+            expanded[0] = 0;
+            expanded[1] = 0;
+            expanded[2] = 0;
+            expanded[3] = 0;
+        }else{
+            uint16_t raw_samples = buffer[idx];
+            int value = 0;
+            uint8_t original = 0;
+            uint8_t answer = 0;
+            uint8_t outval = 0;
+            for (outval = 0; outval < 4 ; outval++){
+                original = raw_samples >> (outval * 4);
+                original = original & 0xf; // the sample
+                if(original >= 0x8) { // it is a negative number
+                    // https://en.wikipedia.org/wiki/Two%27s_complement#Subtraction_from_2N
+                    value = original - 0x10;
+                }
+                else {
+                    value = original;
+                }
+                answer = value & 0xff;
+                expanded[outval] = answer;
+            }
+        }
+
+        // output layout is Time, Frequency, Antenna, Polarization, Integration Step
+        size_t outIndex = currentTimeInterval * samplesInTimeInterval + ch * samplesInFrequency + a * samplesInAntenna;
+        output[2*(outIndex + currentIntegratorStep)] = expanded[0];
+        output[2*(outIndex + currentIntegratorStep) + 1] = expanded[1];
+        output[2*(outIndex + samplesInPol + currentIntegratorStep)] = expanded[2];
+        output[2*(outIndex + samplesInPol + currentIntegratorStep) + 1] = expanded[3];
+    }
+}
+
+
+
+Voltages Voltages::from_dat_file_gpu(const std::string& filename, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps, bool use_pinned_mem){
+    // Step 1: read the whole file in memory
+    std::ifstream fin;
+    fin.open(filename, std::ios::binary);
+    if(!fin && fin.gcount() == 0){
+        std::cerr << "Error happened when reading the input file." << std::endl;
+        throw std::exception();
+    }
+    // variables used for output indexing
+    const size_t samplesInPol {nIntegrationSteps};
+    const size_t samplesInAntenna {samplesInPol * obsInfo.nPolarizations};
+    const size_t samplesInFrequency {samplesInAntenna * obsInfo.nAntennas};
+    const size_t samplesInTimeInterval {samplesInFrequency * obsInfo.nFrequencies};
+    const size_t nIntegrationIntervals {(obsInfo.nTimesteps + nIntegrationSteps - 1)/ nIntegrationSteps };
+    const size_t nTotalSamples {nIntegrationIntervals * samplesInTimeInterval};
+
+    const int buff_size {4096};
+    char buffer[buff_size];  //= vcsmap->pointer;
+    int bytes_read = 0;
+    MemoryBuffer<int8_t> mb_compressed_samples {nTotalSamples, true, false}; // use the XNACK feature
+    int8_t *input = mb_compressed_samples.data();
+    // Copy to GPU memory
+    do{
+        fin.read(buffer, buff_size);
+        bytes_read = fin.gcount();
+        memcpy(input, buffer, bytes_read);
+        input += bytes_read;
+    }while(bytes_read);
+    MemoryBuffer<std::complex<int8_t>> mbVoltages {nTotalSamples, true, false}; // use the XNACK feature
+    struct gpuDeviceProp_t props;
+    int gpu_id = -1;
+    gpuGetDevice(&gpu_id);
+    gpuGetDeviceProperties(&props, gpu_id);
+    unsigned int n_blocks = props.multiProcessorCount * 2;
+    auto voltages = mbVoltages.data();
+    dat_file_expansion_kernel<<<n_blocks, 1024>>>(mb_compressed_samples.data(), nTotalSamples, obsInfo, nIntegrationSteps, 0, reinterpret_cast<int8_t*>(voltages));   
+    fin.close();
+    return Voltages {std::move(mbVoltages), obsInfo, nIntegrationSteps};
+}
+
+
 
 Voltages Voltages::from_memory(const int8_t *buffer, size_t length, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps, bool use_pinned_mem){
     const size_t bytesPerComplexSample {2}; // 4+4 bits 
@@ -159,7 +260,7 @@ Voltages Voltages::from_memory(const int8_t *buffer, size_t length, const Observ
         We allocate slightly more memory than simply nComplexSamples so we can avoid dealing with
         the boundary condition happening when obsInfo.nTimesteps % nIntegrationSteps != 0. 
     */
-    MemoryBuffer<std::complex<int8_t>> mbVoltages {nIntegrationIntervals * samplesInTimeInterval, use_pinned_mem, false};
+    MemoryBuffer<std::complex<int8_t>> mbVoltages {nIntegrationIntervals * samplesInTimeInterval, false, use_pinned_mem};
     auto voltages = mbVoltages.data();
     memset(voltages, 0, sizeof(std::complex<int8_t>) * nIntegrationIntervals * samplesInTimeInterval);
     for(size_t ts = 0; ts < obsInfo.nTimesteps; ts++){
