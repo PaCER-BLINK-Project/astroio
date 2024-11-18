@@ -36,6 +36,7 @@ void __gpu_check_error(gpuError_t x, const char *file, int line);
 #define GPU_PREFIX cuda
 
 #define gpuMalloc(...) GPU_CHECK_ERROR(cudaMalloc(__VA_ARGS__))
+#define gpuMallocManaged(...) GPU_CHECK_ERROR(cudaMallocManaged(__VA_ARGS__))
 #define gpuHostAlloc(...) GPU_CHECK_ERROR(cudaHostAlloc(__VA_ARGS__, 0))
 #define gpuHostAllocDefault cudaHostAllocDefault
 #define gpuMemcpy(...) GPU_CHECK_ERROR(cudaMemcpy(__VA_ARGS__))
@@ -68,6 +69,7 @@ void __gpu_check_error(gpuError_t x, const char *file, int line);
 
 #else
 #define gpuMalloc(...) GPU_CHECK_ERROR(hipMalloc(__VA_ARGS__))
+#define gpuMallocManaged(...) GPU_CHECK_ERROR(hipMallocManaged(__VA_ARGS__))
 #define gpuHostAlloc(...) GPU_CHECK_ERROR(hipHostMalloc(__VA_ARGS__, 0))
 #define gpuHostAllocDefault 0
 #define gpuMemcpy(...) GPU_CHECK_ERROR(hipMemcpy(__VA_ARGS__))
