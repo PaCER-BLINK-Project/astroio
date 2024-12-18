@@ -1,4 +1,5 @@
 #include <iostream>
+#include <chrono>
 #include "../src/astroio.hpp"
 #include "../src/utils.hpp"
 #include "common.hpp"
@@ -25,8 +26,8 @@ void test_from_dat_file(){
     std::cout << "Original method took " << volt1_dur.count() << " seconds." << std::endl;
     // // std::cout << "New method took " << volt2_dur.count() << " seconds." << std::endl;
     std::cout << "GPU method took " << volt3_dur.count() << " seconds." << std::endl;
-    //voltages.to_cpu();
-    //voltages_gpu.to_cpu();
+    voltages.to_cpu();
+    voltages_gpu.to_cpu();
     if(voltages.size() != voltages_gpu.size())
         throw TestFailed("test_from_dat_file: voltage objects are not of the same size.");
     for(size_t i {0}; i < voltages.size(); i++){

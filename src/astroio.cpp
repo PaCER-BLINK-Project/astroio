@@ -147,8 +147,6 @@ __global__ void dat_file_expansion_kernel(int8_t *input, size_t input_size, Obse
     const size_t samplesInAntenna {samplesInPol * obsInfo.nPolarizations};
     const size_t samplesInFrequency {samplesInAntenna * obsInfo.nAntennas};
     const size_t samplesInTimeInterval {samplesInFrequency * obsInfo.nFrequencies};
-    const size_t nIntegrationIntervals {(obsInfo.nTimesteps + nIntegrationSteps - 1)/ nIntegrationSteps };
-    const size_t nTotalSamples {nIntegrationIntervals * samplesInTimeInterval};
 
     int8_t expanded[4];
 
@@ -218,14 +216,14 @@ Voltages Voltages::from_dat_file_gpu(const std::string& filename, const Observat
     const int read_size {4096};
     // char buffer[buff_size];  //= vcsmap->pointer;
     int bytes_read = 0;
-    MemoryBuffer<int8_t> mb_compressed_samples {nTotalSamples, true, false}; // use the XNACK feature
-    char *input = reinterpret_cast<char*>(mb_compressed_samples.data());
-    //int8_t*input;
-    //gpuMallocManaged(&input, sizeof(int8_t) * nTotalSamples);
-    int8_t * orig_input = mb_compressed_samples.data();
+    // MemoryBuffer<int8_t> mb_compressed_samples {nTotalSamples, true, false}; // use the XNACK feature
+    // char *input = reinterpret_cast<char*>(mb_compressed_samples.data());
+    int8_t*input;
+    gpuMallocManaged(&input, sizeof(int8_t) * nTotalSamples);
+    int8_t * orig_input = input; //mb_compressed_samples.data();
     // Copy to GPU memory
     do{
-        fin.read(input, read_size);
+        fin.read((char*)input, read_size);
         bytes_read = fin.gcount();
         input += bytes_read;
     }while(bytes_read);
