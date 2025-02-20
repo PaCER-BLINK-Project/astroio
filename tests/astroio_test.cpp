@@ -99,8 +99,8 @@ int main(void){
     dataRootDir = std::string {pathToData};
     try{
         test_from_dat_file();
-        //test_from_memory();
-        //test_simply_writing_and_reading_fits_file();
+        test_from_memory();
+        test_simply_writing_and_reading_fits_file();
     } catch (std::exception& ex){
         std::cerr << ex.what() << std::endl;
         return 1;

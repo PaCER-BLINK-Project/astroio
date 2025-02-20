@@ -122,14 +122,11 @@ class Voltages : public MemoryBuffer<std::complex<int8_t>> {
      * @param edge: set to zero `edge` channels at the top and the bottom of the frequency band.
      * @param timestepsPerRead: number of timesteps o read from the file at each read call. Might be useful
      * to optimise memory consumption.
-     * @param use_pinned_mem: if GPU support is enabled, gives the option to pin CPU memory for fast memory
-     * transfers to GPU.
      * @return A new instance of the Voltage class.
      */
-    static Voltages from_dat_file(const std::string& filename, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps, \
-        bool use_pinned_mem = false);
+    static Voltages from_dat_file(const std::string& filename, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps);
 
-    static Voltages from_dat_file_gpu(const std::string& filename, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps, bool use_pinned_mem = false);
+    static Voltages from_dat_file_gpu(const std::string& filename, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps);
     /**
      * Read voltage data from a memory buffer.
      * Data in memory is ordered according to the following axes, from the slowest to the fastest:

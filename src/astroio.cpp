@@ -63,7 +63,7 @@ namespace {
 
 
 
-Voltages Voltages::from_dat_file(const std::string& filename, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps, bool use_pinned_mem){
+Voltages Voltages::from_dat_file(const std::string& filename, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps){
     // TODO: fix edge usage.
     const unsigned int edge {0}, timestepsPerRead {100u};
     std::ifstream fin;
@@ -95,7 +95,7 @@ Voltages Voltages::from_dat_file(const std::string& filename, const ObservationI
         We allocate slightly more memory than simply nComplexSamples so we can avoid dealing with
         the boundary condition happening when obsInfo.nTimesteps % nIntegrationSteps != 0. 
     */
-    MemoryBuffer<std::complex<int8_t>> mbVoltages {nIntegrationIntervals * samplesInTimeInterval, use_pinned_mem, false}; // use the XNACK feature
+    MemoryBuffer<std::complex<int8_t>> mbVoltages {nIntegrationIntervals * samplesInTimeInterval, false, false};
     auto voltages = mbVoltages.data();
     memset(voltages, 0, sizeof(std::complex<int8_t>) * nIntegrationIntervals * samplesInTimeInterval);
 
@@ -198,7 +198,7 @@ __global__ void dat_file_expansion_kernel(int8_t *input, size_t input_size, Obse
 
 
 
-Voltages Voltages::from_dat_file_gpu(const std::string& filename, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps, bool use_pinned_mem){
+Voltages Voltages::from_dat_file_gpu(const std::string& filename, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps){
     std::chrono::high_resolution_clock::time_point t1 = std::chrono::high_resolution_clock::now();
     // Step 1: read the whole file in memory
     std::ifstream fin;
@@ -218,15 +218,23 @@ Voltages Voltages::from_dat_file_gpu(const std::string& filename, const Observat
     const int read_size {4096};
     // char buffer[buff_size];  //= vcsmap->pointer;
     int bytes_read = 0;
-    MemoryBuffer<int8_t> mb_compressed_samples {nTotalSamples, true, false}; // use the XNACK feature
-    char *input = reinterpret_cast<char*>(mb_compressed_samples.data());
-    //int8_t*input;
-    //gpuMallocManaged(&input, sizeof(int8_t) * nTotalSamples);
-    int8_t * orig_input = mb_compressed_samples.data();
+    // MemoryBuffer<int8_t> mb_compressed_samples {nTotalSamples, true, false}; // use the XNACK feature
+    //char *input = reinterpret_cast<char*>(mb_compressed_samples.data());
+    int8_t*input;
+    size_t expected_buffer_size {sizeof(int8_t) * nTotalSamples};
+    // TODO: add managed memory support to MemoryBuffer
+    gpuMallocManaged(&input, expected_buffer_size);
+    int8_t * orig_input = input; // mb_compressed_samples.data();
     // Copy to GPU memory
+    size_t total_bytes_read {0};
     do{
-        fin.read(input, read_size);
+        fin.read((char*)input, read_size);
         bytes_read = fin.gcount();
+        total_bytes_read += bytes_read;
+        if(total_bytes_read > expected_buffer_size){
+            std::cerr << "Input file is bigger than expected." << std::endl;
+            throw std::exception();
+        } 
         input += bytes_read;
     }while(bytes_read);
     fin.close();
@@ -239,7 +247,7 @@ Voltages Voltages::from_dat_file_gpu(const std::string& filename, const Observat
     auto voltages = mbVoltages.data();
     dat_file_expansion_kernel<<<n_blocks, 1024>>>(orig_input, nTotalSamples, obsInfo, nIntegrationSteps, 0, reinterpret_cast<int8_t*>(voltages));
     gpuDeviceSynchronize();
-    //hipFree(orig_input);
+    hipFree(orig_input);
     std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> exec_time = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
     std::cout << "'from_dat_file_gpu' took " << exec_time.count() << "seconds." << std::endl;
