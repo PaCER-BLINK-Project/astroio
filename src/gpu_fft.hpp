@@ -13,7 +13,7 @@
   #define gpufftHandle   cufftHandle
   #define gpufftPlan2d   cufftPlan2d
   #define gpufftExecC2C  cufftExecC2C
-  #define gpufftExecC2C  cufftExecC2R
+  #define gpufftExecC2R  cufftExecC2R
   #define GPUFFT_C2C     CUFFT_C2C
   #define GPUFFT_C2R     CUFFT_C2R
   #define GPUFFT_FORWARD CUFFT_FORWARD
