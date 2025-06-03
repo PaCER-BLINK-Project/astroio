@@ -15,6 +15,8 @@ extern const ObservationInfo VCS_OBSERVATION_INFO {
     .nPolarizations = 2u,
     .nTimesteps = 10000u,
     .timeResolution = 0.0001, // in seconds
+    .frequencyResolution = 0.01,
+    .coarseChannelBandwidth = 1.28,
     .startTime = 1313388762,
     .coarseChannel = 20
 };

@@ -27,9 +27,11 @@ struct ObservationInfo {
     unsigned int nTimesteps;
     // Time resolution in seconds
     double timeResolution;
+    // Fine channel frequency resolution in MHz
+    double frequencyResolution;
+    double coarseChannelBandwidth;
     // Time when the observation starts.
     time_t startTime;
-    // TODO what is this?
     unsigned int coarseChannel;
     // Index of the coarse channel within the list of 24 coarse channels comprising a full
     // MWA observation.
