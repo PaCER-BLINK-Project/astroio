@@ -20,6 +20,13 @@ void test_read_metafits_mapping(){
 }
 
 
+void test_read_obsinfo(){
+    std::string metadata_file {data_root_dir + "/mwax/1402778200.metafits"}; 
+	auto obsinfo = read_obsinfo(metadata_file);
+    
+    std::cout << "'test_read_obsinfo' passed." << std::endl;
+}
+
 int main(void){
     char *pathToData {std::getenv(ENV_DATA_ROOT_DIR)};
     if(!pathToData){
@@ -30,6 +37,7 @@ int main(void){
     try{
         
         test_read_metafits_mapping();
+        test_read_obsinfo();
     } catch (TestFailed ex){
         std::cerr << ex.what() << std::endl;
         return 1;

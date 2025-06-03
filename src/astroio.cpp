@@ -227,16 +227,12 @@ Voltages Voltages::from_dat_file_gpu(const std::string& filename, const Observat
     int8_t * orig_input = input; // mb_compressed_samples.data();
     // Copy to GPU memory
     size_t total_bytes_read {0};
-    do{
+    while(total_bytes_read < expected_buffer_size){
         fin.read((char*)input, read_size);
         bytes_read = fin.gcount();
         total_bytes_read += bytes_read;
-        if(total_bytes_read > expected_buffer_size){
-            std::cerr << "Input file is bigger than expected." << std::endl;
-            throw std::exception();
-        } 
         input += bytes_read;
-    }while(bytes_read);
+    }
     fin.close();
     MemoryBuffer<std::complex<int8_t>> mbVoltages {nTotalSamples, true, false};
     struct gpuDeviceProp_t props;
@@ -299,13 +295,12 @@ Voltages Voltages::from_memory(const int8_t *buffer, size_t length, const Observ
 
 
 
-Voltages Voltages::from_eda2_file(const std::string& filename, const ObservationInfo& obs_info, unsigned int nIntegrationSteps,
-        bool use_pinned_mem){
+Voltages Voltages::from_eda2_file(const std::string& filename, const ObservationInfo& obs_info, unsigned int nIntegrationSteps){
     // TODO: more efficient implementation
     char *buffer {nullptr};
     size_t size {0};
     read_data_from_file(filename, buffer, size);
-    auto volt = Voltages::from_memory(reinterpret_cast<int8_t*>(buffer), size, obs_info, nIntegrationSteps, use_pinned_mem);
+    auto volt = Voltages::from_memory(reinterpret_cast<int8_t*>(buffer), size, obs_info, nIntegrationSteps, false);
     delete[] buffer;
     return volt;
 }

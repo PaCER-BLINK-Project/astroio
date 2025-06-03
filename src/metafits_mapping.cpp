@@ -2,6 +2,7 @@
 // based on mwaconfig.h(cpp) and metafitsfile.h(cpp) in cotter
 // --------------------------------------------------------------------------------------------
 #include "metafits_mapping.hpp"
+#include "astroio.hpp"
 #include <math.h>
 #include <fitsio.h>
 #include <iostream>
@@ -555,7 +556,7 @@ bool CObsMetadata::parseKeyword( const std::string& keyName, const std::string& 
                  keyName == "FINECHAN" || keyName == "TIMEOFF" )
                 ; // Ignore these fields, they can be derived from others.
         else{
-                printf("Ignored keyword: %s\n",keyName.c_str());
+                // printf("Ignored keyword: %s\n",keyName.c_str());
                 return false;
         }
 
@@ -565,13 +566,13 @@ bool CObsMetadata::parseKeyword( const std::string& keyName, const std::string& 
 bool CObsMetadata::parseFitsString(const char* valueStr, std::string& outString )
 {
         if(valueStr[0] != '\''){
-           printf("ERROR: could not parse string %s\n",valueStr);
+           // printf("ERROR: could not parse string %s\n",valueStr);
            return false;
         }
         
         std::string value(valueStr+1);
         if((*value.rbegin())!='\''){
-           printf("ERROR : could not parse string : %s\n",valueStr);
+           // printf("ERROR : could not parse string : %s\n",valueStr);
            return false;
         }
         int s = value.size() - 1;
@@ -646,7 +647,7 @@ double CObsMetadata::parseFitsDateToMJD(const char* valueStr)
 
 bool CObsMetadata::parseIntArray(const char* valueStr, int* values, size_t count)
 {
-        printf("DEBUG : valueStr = %s , count = %d\n",valueStr,int(count));
+        // printf("DEBUG : valueStr = %s , count = %d\n",valueStr,int(count));
         std::string str;
         if( !parseFitsString(valueStr,str) ){
            return false;
@@ -656,8 +657,8 @@ bool CObsMetadata::parseIntArray(const char* valueStr, int* values, size_t count
         {
                 size_t next = str.find(',', pos);
                 if(next == str.npos){
-                        printf("DEBUG : next = %d , pos =  %d\n",int(next),int(str.npos));
-                        printf("ERROR : parsing integer list %s in metafits file\n",valueStr);
+                        //printf("DEBUG : next = %d , pos =  %d\n",int(next),int(str.npos));
+                        // printf("ERROR : parsing integer list %s in metafits file\n",valueStr);
                         return false;
                 }
                 *values = atoi(str.substr(pos, next-pos).c_str());
@@ -782,7 +783,7 @@ int CObsMetadata::ReadAntPositions()
       if(gainsCol != -1)
          fits_read_col(_fptr, TINT, gainsCol, i+1, 1, 24, 0, gainValues, 0, &status);
       checkStatus(status,"Could not read tile");
-      
+      std::cout << "Antenna is " << antenna << ", input is " << input << std::endl; 
       input_mapping[input] = 2 * antenna + (pol == 'X' ? 0 : 1);
       
       if(pol == 'X'){
@@ -852,4 +853,19 @@ std::vector<int> read_metafits_mapping(const std::string& filename){
    }
 	std::vector<int> mapping = meta.input_mapping;
    return mapping;
+}
+
+
+ObservationInfo read_obsinfo(const std::string& filename){
+   ::CObsMetadata meta;
+	if(!meta.ReadMetaData(filename.c_str())){
+      std::cerr << "impossible to read metadata file." << std::endl;
+      throw std::exception();
+   }
+   ObservationInfo info;
+   info.nAntennas;
+   info.nFrequencies;
+   info.nPolarizations;
+   info.nTimesteps;
+   info.timeResolution;
 }

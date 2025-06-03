@@ -156,8 +156,7 @@ class Voltages : public MemoryBuffer<std::complex<int8_t>> {
      * Read EDA2 voltage data from a binary dump of the corresponding HDF5 file.
      * (This is mainly used for testing purposes, we should probably read the HDF5 file directly)
     */
-    static Voltages from_eda2_file(const std::string& filename, const ObservationInfo& obs_info, unsigned int nIntegrationSteps,
-        bool use_pinned_mem = false);
+    static Voltages from_eda2_file(const std::string& filename, const ObservationInfo& obs_info, unsigned int nIntegrationSteps);
 
 };
 
