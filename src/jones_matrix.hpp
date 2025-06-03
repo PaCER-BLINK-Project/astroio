@@ -1,26 +1,25 @@
 #ifndef __JONES_MATRIX_H__
 #define __JONES_MATRIX_H__
 
-#include <complex>
 #include <iostream>
 #include "gpu_macros.hpp"
-
+#include "mycomplex.hpp"
 
 template <typename T>
 class JonesMatrix {
 
     public:
 
-    std::complex<T> XX;
-    std::complex<T> XY;
-    std::complex<T> YX;
-    std::complex<T> YY;
+    Complex<T> XX;
+    Complex<T> XY;
+    Complex<T> YX;
+    Complex<T> YY;
 
     inline friend std::istream& operator>>(std::istream& is, JonesMatrix& m){
-        is.read(reinterpret_cast<char*>(&m.XX), sizeof(std::complex<T>));
-        is.read(reinterpret_cast<char*>(&m.XY), sizeof(std::complex<T>));
-        is.read(reinterpret_cast<char*>(&m.YX), sizeof(std::complex<T>));
-        is.read(reinterpret_cast<char*>(&m.YY), sizeof(std::complex<T>));
+        is.read(reinterpret_cast<char*>(&m.XX), sizeof(Complex<T>));
+        is.read(reinterpret_cast<char*>(&m.XY), sizeof(Complex<T>));
+        is.read(reinterpret_cast<char*>(&m.YX), sizeof(Complex<T>));
+        is.read(reinterpret_cast<char*>(&m.YY), sizeof(Complex<T>));
         return is;
     }
 
@@ -84,10 +83,10 @@ class JonesMatrix {
     __host__ __device__
     #endif
     double max_abs() const {
-        double max {std::abs(XX)};
-        if(std::abs(XY) > max) max = std::abs(XY);
-        if(std::abs(YX) > max) max = std::abs(XY);
-        if(std::abs(YY) > max) max = std::abs(XY);
+        double max {XX.magnitude()};
+        if(XY.magnitude() > max) max = XY.magnitude();
+        if(YX.magnitude() > max) max = XY.magnitude();
+        if(YY.magnitude() > max) max = XY.magnitude();
         return max;
     }
 
@@ -96,10 +95,10 @@ class JonesMatrix {
     #endif
     JonesMatrix conjtrans() const {
         JonesMatrix res;
-        res.XX = std::conj(XX);
-        res.XY = std::conj(YX);
-        res.YY = std::conj(YY);
-        res.YX = std::conj(XY);
+        res.XX = XX.conj();
+        res.XY = YX.conj();
+        res.YY = YY.conj();
+        res.YX = XY.conj();
         return res;
     }
 

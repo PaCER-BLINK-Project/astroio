@@ -147,8 +147,6 @@ __global__ void dat_file_expansion_kernel(int8_t *input, size_t input_size, Obse
     const size_t samplesInAntenna {samplesInPol * obsInfo.nPolarizations};
     const size_t samplesInFrequency {samplesInAntenna * obsInfo.nAntennas};
     const size_t samplesInTimeInterval {samplesInFrequency * obsInfo.nFrequencies};
-    const size_t nIntegrationIntervals {(obsInfo.nTimesteps + nIntegrationSteps - 1)/ nIntegrationSteps };
-    const size_t nTotalSamples {nIntegrationIntervals * samplesInTimeInterval};
 
     int8_t expanded[4];
 
