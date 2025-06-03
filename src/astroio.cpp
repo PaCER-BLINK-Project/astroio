@@ -241,7 +241,7 @@ Voltages Voltages::from_dat_file_gpu(const std::string& filename, const Observat
     auto voltages = mbVoltages.data();
     dat_file_expansion_kernel<<<n_blocks, 1024>>>(orig_input, nTotalSamples, obsInfo, nIntegrationSteps, 0, reinterpret_cast<int8_t*>(voltages));
     gpuDeviceSynchronize();
-    hipFree(orig_input);
+    gpuFree(orig_input);
     std::chrono::high_resolution_clock::time_point t2 = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> exec_time = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
     std::cout << "'from_dat_file_gpu' took " << exec_time.count() << "seconds." << std::endl;
