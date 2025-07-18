@@ -783,7 +783,6 @@ int CObsMetadata::ReadAntPositions()
       if(gainsCol != -1)
          fits_read_col(_fptr, TINT, gainsCol, i+1, 1, 24, 0, gainValues, 0, &status);
       checkStatus(status,"Could not read tile");
-      std::cout << "Antenna is " << antenna << ", input is " << input << std::endl; 
       input_mapping[input] = 2 * antenna + (pol == 'X' ? 0 : 1);
       
       if(pol == 'X'){
