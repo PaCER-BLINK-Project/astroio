@@ -367,9 +367,7 @@ bool CObsMetadata::ReadMetaFitsFile( const char* filename )
          }
       }
 
-      if( !parseKeyword( keyName, keyValueStr ) ){
-         printf("WARNING : could not parse keyword %s\n",keyName);
-      }
+      parseKeyword( keyName, keyValueStr );
    }
 
    correlationType = CObsMetadata::BothCorrelations;
@@ -393,10 +391,8 @@ bool CObsMetadata::ReadMetaFitsFile( const char* filename )
    
    // for now only read if not read earlier :
    if( antenna_positions.size() == 0 ){
-      printf("DEBUG : reading antenna positions from metafits\n");
       ReadAntPositions();
    }else{
-      printf("INFO : antenna positions already read earlier, the list in metafits ignored\n");
    }
    
    if( _fptr ){
@@ -454,7 +450,6 @@ bool CObsMetadata::parseKeyword( const std::string& keyName, const std::string& 
                 char szTmp[128];
                 sprintf(szTmp,"%04d%02d%02d_%02d%02d%02d",year, month, day, refHour, refMinute, int(refSecond));
                 startUnixTime = 0; // CRISTIAN get_gmtime_from_string( szTmp, "%Y%m%d_%H%M%S" );
-                printf("DEBUG : %s UTC -> %.8f\n",szTmp,startUnixTime);
                 
                 startUnixTime += (refSecond-int(refSecond));
         }
@@ -750,10 +745,8 @@ int CObsMetadata::ReadAntPositions()
    long int nrow;
    fits_get_num_rows(_fptr, &nrow, &status);
    checkStatus(status,"Could not get number of rows");
-   printf("DEBUG : numner of rows = %d\n",int(nrow));
 
    antenna_positions.resize(nrow/2); // was antennae.resize(nrow/2);
-   printf("DEBUG : Alloceted %d size array for antenna positions\n",int(nrow/2));
 //   inputs.resize(nrow);
    input_mapping.resize(nrow);
    for(long int i=0; i!=nrow; ++i)

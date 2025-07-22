@@ -53,13 +53,12 @@ class Images : public MemoryBuffer<std::complex<float>> {
     }
 
     Images& operator=(Images&& other){
-        if(this == &other) return *this;
+        MemoryBuffer::operator=(std::move(other));
         obsInfo = other.obsInfo;
         nIntegrationSteps = other.nIntegrationSteps;
         nFrequencies = other.nFrequencies;
         nAveragedChannels = other.nAveragedChannels;
         side_size = other.side_size;
-        MemoryBuffer::operator=(std::move(other));
         return *this;
     }
 

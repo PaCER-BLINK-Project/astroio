@@ -3,7 +3,7 @@
 
 #include <fstream>
 #include "gpu_macros.hpp"
-
+#include <iostream>
 template <typename T>
 class MemoryBuffer {
 
@@ -72,7 +72,7 @@ class MemoryBuffer {
      * 
     */
     void allocate(size_t n_elements, bool on_gpu = false, bool pinned = false){
-        this->~MemoryBuffer();
+        if(_data) this->~MemoryBuffer();
         #ifndef __GPU__
         if(on_gpu || pinned)
             throw std::invalid_argument { "MemoryBuffer::allocate: cannot use `pinned` or `on_gpu` "
@@ -213,10 +213,10 @@ class MemoryBuffer {
 
     MemoryBuffer& operator=(const MemoryBuffer& other){
         if(this == &other) return *this;
+        if(_data) this->~MemoryBuffer();
         n = other.n;
         _on_gpu = other._on_gpu;
         _pinned = other._pinned;
-        this->~MemoryBuffer();
         if(!_pinned && !_on_gpu && other._data){
             _data = new T[n];
             memcpy(_data, other._data, n * sizeof(T));
@@ -234,7 +234,7 @@ class MemoryBuffer {
     }
 
     MemoryBuffer& operator=(MemoryBuffer&& other){
-        this->~MemoryBuffer();
+        if(_data) this->~MemoryBuffer();
         n = other.n;
         _on_gpu = other._on_gpu;
         _pinned = other._pinned;
