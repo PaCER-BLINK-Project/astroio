@@ -62,7 +62,9 @@ class Images : public MemoryBuffer<std::complex<float>> {
         return *this;
     }
 
-
+    #ifdef __GPU__
+    __host__ __device__
+    #endif
     std::complex<float> *at(unsigned int interval, unsigned int frequency) {
         const size_t nValuesInTimeInterval {image_size() * nFrequencies};
         std::complex<float> *pData = this->data() + nValuesInTimeInterval * interval + image_size() * frequency;
@@ -72,16 +74,25 @@ class Images : public MemoryBuffer<std::complex<float>> {
     /**
      * Number of time intervals integrated over by the correlator.
      */
+    #ifdef __GPU__
+    __host__ __device__
+    #endif
     size_t integration_intervals() const {
         return (obsInfo.nTimesteps + nIntegrationSteps - 1) / nIntegrationSteps;
     }
     
     // Number of pixels in a single image.
+    #ifdef __GPU__
+    __host__ __device__
+    #endif
     size_t image_size() const {
        return side_size * side_size;
     }
 
     // Number of images `data` array.
+    #ifdef __GPU__
+    __host__ __device__
+    #endif
     size_t size() const {
         return this->integration_intervals() * nFrequencies;
     }
