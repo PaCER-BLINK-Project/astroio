@@ -5,9 +5,9 @@
 #include <cstdio>
 #include <chrono>
 #include <algorithm>
+#include <exception>
 #include "utils.hpp"
 #include "astroio.hpp"
-
 
 extern const ObservationInfo VCS_OBSERVATION_INFO {
     .nAntennas = 128u,
@@ -139,7 +139,7 @@ Voltages Voltages::from_dat_file(const std::string& filename, const ObservationI
 }
 
 
-
+#ifdef __GPU__
 __global__ void dat_file_expansion_kernel(int8_t *input, size_t input_size, ObservationInfo obsInfo, unsigned int nIntegrationSteps, unsigned int edge, int8_t* output){
 
     size_t start_index {blockDim.x * blockIdx.x + threadIdx.x};
@@ -249,7 +249,11 @@ Voltages Voltages::from_dat_file_gpu(const std::string& filename, const Observat
     std::cout << "'from_dat_file_gpu' took " << exec_time.count() << "seconds." << std::endl;
     return Voltages {std::move(mbVoltages), obsInfo, nIntegrationSteps};
 }
-
+#else
+Voltages Voltages::from_dat_file_gpu(const std::string& filename, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps){
+    throw std::runtime_error("from_dat_file_gpu cannot be called on a CPU-only compile of the code."); 
+}
+#endif
 
 
 Voltages Voltages::from_memory(const int8_t *buffer, size_t length, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps, bool use_pinned_mem){
