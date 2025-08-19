@@ -14,7 +14,7 @@ class Images : public MemoryBuffer<std::complex<float>> {
     unsigned int nFrequencies;
     unsigned int side_size;
     double ra_deg, dec_deg;
-    std::vector<double> pixscale;
+    double pixscale_ra, pixscale_dec; // separate pixscales for RA,DEC due to different UV coverage (MAX(u) and MAX(v))
 
    Images(MemoryBuffer<std::complex<float>>&& data, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps,
             unsigned int nAveragedChannels, unsigned int side_size) : MemoryBuffer {std::move(data)} {
