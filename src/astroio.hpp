@@ -33,6 +33,8 @@ struct ObservationInfo {
     // Time when the observation starts.
     time_t startTime;
     unsigned int coarseChannel;
+    double geo_long_deg; // Geographic coordinates of the observatory LONGITUDE [degrees]
+    double geo_lat_deg;  // LATITUDE [degrees]
     // Index of the coarse channel within the list of 24 coarse channels comprising a full
     // MWA observation.
     unsigned int coarse_channel_index;

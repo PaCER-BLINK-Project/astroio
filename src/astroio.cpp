@@ -18,7 +18,9 @@ extern const ObservationInfo VCS_OBSERVATION_INFO {
     .frequencyResolution = 0.01,
     .coarseChannelBandwidth = 1.28,
     .startTime = 1313388762,
-    .coarseChannel = 20
+    .coarseChannel = 20,
+    .geo_long = 116.67081,
+    .geo_lat = -26.703319
 };
 
 
