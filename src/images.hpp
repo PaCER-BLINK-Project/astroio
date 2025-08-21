@@ -106,6 +106,9 @@ class Images : public MemoryBuffer<std::complex<float>> {
 
 
    void to_fits_files(const std::string& directory_path, bool save_as_complex = false, bool save_imaginary = false);
+   
+private :
+   void save_fits_file(const std::string filename, float* data, long side_x, long side_y);
 };
 
 
