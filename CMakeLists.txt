@@ -18,6 +18,11 @@ if( NOT CFITSIO_LIB )
     message(FATAL_ERROR "CFITSIO not found.")
 endif()
 
+find_library(LIBNOVA_LIB nova ENV LD_LIBRARY_PATH REQUIRED)
+if( NOT LIBNOVA_LIB )
+    message(FATAL_ERROR "LIBNOVA not found.")
+endif()
+
 file(GLOB astroio_sources "src/*.cpp")
 file(GLOB astroio_apps "apps/*.cpp")
 file(GLOB astroio_tests "tests/*.cpp")
@@ -29,7 +34,7 @@ endif()
 
 add_library(blink_astroio SHARED ${astroio_sources})
 set_target_properties(blink_astroio PROPERTIES PUBLIC_HEADER "${astroio_headers}")
-target_link_libraries(blink_astroio ${CFITSIO_LIB})
+target_link_libraries(blink_astroio ${CFITSIO_LIB} ${LIBNOVA_LIB})
 
 
 install(TARGETS blink_astroio
