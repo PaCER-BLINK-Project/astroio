@@ -24,7 +24,7 @@ process_build_script_input group
 # that this script will generate.
 echo "Loading required modules ..."
 module reset
-module_load  blink_test_data/devel rocm/6.4.1 cfitsio/4.4.0
+module_load  blink_test_data/devel rocm/6.4.1 cfitsio/4.4.0 libnova/0.15.0-iwh6cpn
 
 # cmake is only required at build time, so we use the normal module load
 module load cmake/3.30.5
