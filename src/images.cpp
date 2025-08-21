@@ -87,12 +87,7 @@ void Images::save_fits_file(const std::string filename, float* data, long side_x
     double jd,xi,eta;
     double lst_hours = get_local_sidereal_time( obsInfo.startTime, obsInfo.geo_long_deg, jd );
     fixCoordHdr( ra_deg, dec_deg, lst_hours, obsInfo.geo_long_deg, obsInfo.geo_lat_deg, xi, eta );
-    
-    
-    // hdu.add_keyword("TIME", static_cast<long>(obsInfo.startTime), "Unix time (seconds)");
-    // hdu.add_keyword("MILLITIM", msElapsed, "Milliseconds since TIME");
-    // hdu.add_keyword("INTTIME", integrationTime, "Integration time (s)");
-    // hdu.add_keyword("COARSE_CHAN", obsInfo.coarseChannel, "Receiver Coarse Channel Number (only used in offline mode)");
+        
     hdu.add_keyword("CTYPE1", std::string { "RA---SIN"}, "");
     hdu.add_keyword("CRPIX1", side_x / 2 + 1, "" );   
     hdu.add_keyword("CDELT1", pixscale_ra, "Pixscale" );
