@@ -52,29 +52,29 @@ namespace {
       double ha_hours=lst_hours-ra_center_h;
       double ha_radians=(ha_hours*15.00)*deg2rad;
 
-      printf("values = %.8f %.8f %.8f , %.8f\n",lat_radian,ra_center_rad,dec_center_rad,ha_radians);
+      // printf("values = %.8f %.8f %.8f , %.8f\n",lat_radian,ra_center_rad,dec_center_rad,ha_radians);
       double cosZ = sin(lat_radian)*sin(dec_center_rad) + cos(lat_radian)*cos(dec_center_rad)*cos(ha_radians);
       double tanZ = sqrt(1.00-cosZ*cosZ)/cosZ;
 
-      printf("tanZ = %.8f\n",tanZ);
+      // printf("tanZ = %.8f\n",tanZ);
 
       // Parallactic angle
       // http://www.gb.nrao.edu/~rcreager/GBTMetrology/140ft/l0058/gbtmemo52/memo52.html
       double tan_chi = sin(ha_radians)/( cos(dec_center_rad)*tan(lat_radian) - sin(dec_center_rad)*sin(ha_radians)  );
 
       // $lat_radian $dec_radian $ha_radian
-      printf("DEBUG : values2 : %.8f %.8f %.8f\n",lat_radian,dec_center_rad,ha_radians);
+      // printf("DEBUG : values2 : %.8f %.8f %.8f\n",lat_radian,dec_center_rad,ha_radians);
       double chi_radian = atan2( sin(ha_radians) , cos(dec_center_rad)*tan(lat_radian) - sin(dec_center_rad)*cos(ha_radians) );
 
-      printf("chi_radian = %.8f\n",chi_radian);
+      // printf("chi_radian = %.8f\n",chi_radian);
 
       // there is a - sign in the paper, but Randall says it's possibly wrong:
       // so I stay with NO - SIGN version
       xi=tanZ*sin(chi_radian);
       eta=tanZ*cos(chi_radian);
 
-      printf("xi = %.8f\n",xi);
-      printf("eta = %.8f\n",eta);
+      // printf("xi = %.8f\n",xi);
+      // printf("eta = %.8f\n",eta);
    }    
 }
 
