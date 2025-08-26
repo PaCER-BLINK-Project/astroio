@@ -472,13 +472,13 @@ std::vector<std::vector<DatFile>> parse_mwa_dat_files(std::string directory, int
     auto dat_files = blink::imager::list_files_in_dir(directory, ".dat");
     // check that the selected range is valid. 24 is the number of coarse channels in a second.
     int start_file_index = offset * 24;
-    if(count == -1) {
+    if(count < 0) {
         count = dat_files.size() / 24 - offset;
     }
     int file_count = count * 24;
     if(start_file_index < 0 || start_file_index >= dat_files.size())
         throw std::invalid_argument {"parse_mwa_dat_files: invalid start offset specifiled."};
-    if(file_count >= 0 && start_file_index + file_count > dat_files.size())
+    if(start_file_index + file_count > dat_files.size())
         throw std::invalid_argument {"parse_mwa_dat_files: invalid count of seconds specifiled."};
 
     std::sort(dat_files.begin(), dat_files.end());
