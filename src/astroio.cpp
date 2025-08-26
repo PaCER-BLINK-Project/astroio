@@ -8,6 +8,7 @@
 #include <exception>
 #include "utils.hpp"
 #include "astroio.hpp"
+#include "files.hpp"
 
 extern const ObservationInfo VCS_OBSERVATION_INFO {
     .nAntennas = 128u,
@@ -455,3 +456,32 @@ std::vector<std::vector<DatFile>> parse_mwa_dat_files(std::vector<std::string>& 
     return observation;
 }
 
+
+/**
+ * @brief Get all the dat files in a directory. Optionally, only select the dat files corresponding
+ * to a certain range of seconds, specified with an offset from the first second and a count.
+ * 
+ * @param directory: path to the directory containing the .dat files
+ * @param offset: offset in number of seconds from the start of the observation.
+ * @param count: number of seconds to consider, starting from the offset.
+ * @todo Ideally we want to return a structured output that partitions input by observation and
+ * and then by groups of 24 files each representing 1 sencond of observation. Assume now a single
+ * observation, single 24 files.
+*/
+std::vector<std::vector<DatFile>> parse_mwa_dat_files(std::string directory, int offset, int count){
+    auto dat_files = blink::imager::list_files_in_dir(directory, ".dat");
+    // check that the selected range is valid. 24 is the number of coarse channels in a second.
+    int start_file_index = offset * 24;
+    if(count < 0) {
+        count = dat_files.size() / 24 - offset;
+    }
+    int file_count = count * 24;
+    if(start_file_index < 0 || start_file_index >= dat_files.size())
+        throw std::invalid_argument {"parse_mwa_dat_files: invalid start offset specifiled."};
+    if(start_file_index + file_count > dat_files.size())
+        throw std::invalid_argument {"parse_mwa_dat_files: invalid count of seconds specifiled."};
+
+    std::sort(dat_files.begin(), dat_files.end());
+    auto selected_dat_files = std::vector<std::string>(dat_files.begin() + start_file_index, dat_files.begin() + start_file_index + file_count);
+    return parse_mwa_dat_files(selected_dat_files);
+}

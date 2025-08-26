@@ -303,4 +303,17 @@ ObservationInfo parse_mwa_phase1_dat_file_info(const std::string& file_path);
  * observation, single 24 files.
 */
 std::vector<std::vector<DatFile>> parse_mwa_dat_files(std::vector<std::string>& file_list);
+
+/**
+ * @brief Get all the dat files in a directory. Optionally, only select the dat files corresponding
+ * to a certain range of seconds, specified with an offset from the first second and a count.
+ * 
+ * @param directory: path to the directory containing the .dat files
+ * @param offset: offset in number of seconds from the start of the observation.
+ * @param count: number of seconds to consider, starting from the offset.
+ * @todo Ideally we want to return a structured output that partitions input by observation and
+ * and then by groups of 24 files each representing 1 sencond of observation. Assume now a single
+ * observation, single 24 files.
+*/
+std::vector<std::vector<DatFile>> parse_mwa_dat_files(std::string directory, int start_second = 0, int count = -1);
 #endif

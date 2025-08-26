@@ -18,5 +18,15 @@ namespace blink::imager {
      */
     void create_directory(const std::string& path);
 
+    /**
+    @brief list all the files in a directory.
+
+    @param path: path of a directory.
+
+    @returns a vector of string objects representing the path to all files
+    in the given directory.
+    */
+    std::vector<std::string> list_files_in_dir(std::string path, std::string ext = "");
+
 }
 #endif
