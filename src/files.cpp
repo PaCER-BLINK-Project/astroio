@@ -4,6 +4,7 @@
 #include <string>
 #include <string.h>
 #include <vector>
+#include <stdexcept>
 
 namespace {
     bool ends_with(std::string const &full_string, std::string const &ending) {
