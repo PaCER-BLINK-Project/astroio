@@ -7,6 +7,13 @@
 #include "memory_buffer.hpp"
 
 class Images : public MemoryBuffer<std::complex<float>> {
+    private:
+    // Auxiliary buffers to save images to disk. Only allocated
+    // when needed. See `to_fits_files` for their usage.
+    MemoryBuffer<float> img_real;
+    MemoryBuffer<float> img_imag;
+    std::vector<bool> flags;
+
     public:
     ObservationInfo obsInfo;
     unsigned int nIntegrationSteps;
@@ -62,15 +69,34 @@ class Images : public MemoryBuffer<std::complex<float>> {
         return *this;
     }
 
+    void set_flags(const std::vector<bool>& flags) {
+        this->flags = flags;
+    }
+
+    const std::vector<bool>& get_flags() const {return flags;};
+
+    bool is_flagged(size_t interval, size_t fine_channel) const {
+        if(flags.size() == 0) return false;
+        return flags[nFrequencies * interval + fine_channel];
+    }
+
     #ifdef __GPU__
     __host__ __device__
     #endif
-    std::complex<float> *at(unsigned int interval, unsigned int frequency) {
+    std::complex<float> *at(unsigned int interval, unsigned int fine_channel) {
         const size_t nValuesInTimeInterval {image_size() * nFrequencies};
-        std::complex<float> *pData = this->data() + nValuesInTimeInterval * interval + image_size() * frequency;
+        std::complex<float> *pData = this->data() + nValuesInTimeInterval * interval + image_size() * fine_channel;
         return pData;
     }
 
+    #ifdef __GPU__
+    __host__ __device__
+    #endif
+    const std::complex<float> *at(unsigned int interval, unsigned int fine_channel) const {
+        const size_t nValuesInTimeInterval {image_size() * nFrequencies};
+        const std::complex<float> *pData = this->data() + nValuesInTimeInterval * interval + image_size() * fine_channel;
+        return pData;
+    }
     /**
      * Number of time intervals integrated over by the correlator.
      */
@@ -97,12 +123,8 @@ class Images : public MemoryBuffer<std::complex<float>> {
         return this->integration_intervals() * nFrequencies;
     }
     
-    /**
-     * @brief Save visibilities to a FITS file on disk.
-     * 
-     * @param filename name of the output file.
-     */
-    void to_fits_file(const std::string& filename, bool save_as_complex = false, bool save_imaginary = false);
+
+    void to_fits_file(size_t interval, size_t fine_channel, const std::string& filename, bool save_as_complex = false, bool save_imaginary = false);
 
 
    void to_fits_files(const std::string& directory_path, bool save_as_complex = false, bool save_imaginary = false);
