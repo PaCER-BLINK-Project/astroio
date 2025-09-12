@@ -364,7 +364,7 @@ void Visibilities::to_fits_file(const std::string& filename) const{
         FITS::HDU hdu;
         std::complex<float>* pToMatrix = const_cast<std::complex<float>*>(this->data() + interval * (nFrequencies * this->matrix_size()));
         int msElapsed {static_cast<int>(interval *  (obsInfo.timeResolution * nIntegrationSteps * 1e3))};
-        hdu.set_image(reinterpret_cast<float*>(pToMatrix),  static_cast<long>(nFrequencies), static_cast<long>(this->matrix_size()) * 2);
+        hdu.set_image(reinterpret_cast<float*>(pToMatrix), static_cast<long>(this->matrix_size()) * 2, static_cast<long>(nFrequencies));
         hdu.add_keyword("TIME", static_cast<long>(obsInfo.startTime), "Unix time (seconds)");
         hdu.add_keyword("MILLITIM", msElapsed, "Milliseconds since TIME");
         hdu.add_keyword("INTTIME", integrationTime, "Integration time (s)");
