@@ -16,35 +16,31 @@ class Images : public MemoryBuffer<std::complex<float>> {
 
     public:
     ObservationInfo obsInfo;
-    unsigned int nIntegrationSteps;
-    unsigned int nAveragedChannels;
-    unsigned int nFrequencies;
+    unsigned int n_intervals;
+    unsigned int n_channels;
     unsigned int side_size;
     double ra_deg, dec_deg;
     double pixscale_ra, pixscale_dec; // separate pixscales for RA,DEC due to different UV coverage (MAX(u) and MAX(v))
 
-   Images(MemoryBuffer<std::complex<float>>&& data, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps,
-            unsigned int nAveragedChannels, unsigned int side_size) : MemoryBuffer {std::move(data)} {
+   Images(MemoryBuffer<std::complex<float>>&& data, const ObservationInfo& obsInfo, unsigned int n_intervals,
+            unsigned int n_channels, unsigned int side_size) : MemoryBuffer {std::move(data)} {
         this->obsInfo = obsInfo;
-        this->nIntegrationSteps = nIntegrationSteps;
-        this->nAveragedChannels = nAveragedChannels;
-        this->nFrequencies = obsInfo.nFrequencies / nAveragedChannels;
+        this->n_intervals = n_intervals;
+        this->n_channels = n_channels;
         this->side_size = side_size;
     }
 
     Images(const Images& other) : MemoryBuffer {other} {
         obsInfo = other.obsInfo;
-        nIntegrationSteps = other.nIntegrationSteps;
-        nFrequencies = other.nFrequencies;
-        nAveragedChannels = other.nAveragedChannels;
+        n_intervals = other.n_intervals;
+        n_channels = other.n_channels;
         side_size = other.side_size;
     }
 
     Images(Images&& other) : MemoryBuffer {std::move(other)} {
         obsInfo = other.obsInfo;
-        nIntegrationSteps = other.nIntegrationSteps;
-        nFrequencies = other.nFrequencies;
-        nAveragedChannels = other.nAveragedChannels;
+        n_intervals = other.n_intervals;
+        n_channels = other.n_channels;
         side_size = other.side_size;
     }
 
@@ -52,9 +48,8 @@ class Images : public MemoryBuffer<std::complex<float>> {
         if(this == &other) return *this;
         MemoryBuffer::operator=(other);
         obsInfo = other.obsInfo;
-        nIntegrationSteps = other.nIntegrationSteps;
-        nFrequencies = other.nFrequencies;
-        nAveragedChannels = other.nAveragedChannels;
+        n_intervals = other.n_intervals;
+        n_channels = other.n_channels;
         side_size = other.side_size;
         return *this;
     }
@@ -62,9 +57,8 @@ class Images : public MemoryBuffer<std::complex<float>> {
     Images& operator=(Images&& other){
         MemoryBuffer::operator=(std::move(other));
         obsInfo = other.obsInfo;
-        nIntegrationSteps = other.nIntegrationSteps;
-        nFrequencies = other.nFrequencies;
-        nAveragedChannels = other.nAveragedChannels;
+        n_intervals = other.n_intervals;
+        n_channels = other.n_channels;
         side_size = other.side_size;
         return *this;
     }
@@ -77,14 +71,14 @@ class Images : public MemoryBuffer<std::complex<float>> {
 
     bool is_flagged(size_t interval, size_t fine_channel) const {
         if(flags.size() == 0) return false;
-        return flags[nFrequencies * interval + fine_channel];
+        return flags[n_channels * interval + fine_channel];
     }
 
     #ifdef __GPU__
     __host__ __device__
     #endif
     std::complex<float> *at(unsigned int interval, unsigned int fine_channel) {
-        const size_t nValuesInTimeInterval {image_size() * nFrequencies};
+        const size_t nValuesInTimeInterval {image_size() * n_channels};
         std::complex<float> *pData = this->data() + nValuesInTimeInterval * interval + image_size() * fine_channel;
         return pData;
     }
@@ -93,7 +87,7 @@ class Images : public MemoryBuffer<std::complex<float>> {
     __host__ __device__
     #endif
     const std::complex<float> *at(unsigned int interval, unsigned int fine_channel) const {
-        const size_t nValuesInTimeInterval {image_size() * nFrequencies};
+        const size_t nValuesInTimeInterval {image_size() * n_channels};
         const std::complex<float> *pData = this->data() + nValuesInTimeInterval * interval + image_size() * fine_channel;
         return pData;
     }
@@ -104,7 +98,7 @@ class Images : public MemoryBuffer<std::complex<float>> {
     __host__ __device__
     #endif
     size_t integration_intervals() const {
-        return (obsInfo.nTimesteps + nIntegrationSteps - 1) / nIntegrationSteps;
+        return n_intervals;
     }
     
     // Number of pixels in a single image.
@@ -120,7 +114,7 @@ class Images : public MemoryBuffer<std::complex<float>> {
     __host__ __device__
     #endif
     size_t size() const {
-        return this->integration_intervals() * nFrequencies;
+        return n_intervals * n_channels;
     }
     
 
