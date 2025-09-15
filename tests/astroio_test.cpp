@@ -64,7 +64,7 @@ void test_simply_writing_and_reading_fits_file(){
     obsInfo.startTime=0;
     obsInfo.id="id";
 
-    const unsigned int n_baselines {(obsInfo.nAntennas + 1) * (obsInfo.nAntennas / 2)};
+    const unsigned int n_baselines {((obsInfo.nAntennas + 1) * obsInfo.nAntennas) / 2};
     const size_t matrixSize {n_baselines * obsInfo.nPolarizations * obsInfo.nPolarizations};
     const size_t nIntervals {(obsInfo.nTimesteps + 100 - 1) / 100};
     const size_t nValuesInTimeInterval {matrixSize * obsInfo.nFrequencies};
