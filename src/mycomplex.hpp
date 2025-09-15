@@ -2,6 +2,7 @@
 #ifndef __MYCOMPLEX_H__
 #define __MYCOMPLEX_H__
 
+#include <cmath>
 #include <gpu_macros.hpp>
 
 template <typename T>
@@ -59,6 +60,13 @@ class Complex {
     #endif
     Complex conj() const {
         return {real, -imag};
+    }
+
+    #ifdef __GPU__
+    __host__ __device__
+    #endif
+    bool isnan() const {
+        return std::isnan(real) || std::isnan(imag);
     }
 
     inline friend std::istream& operator>>(std::istream& is, Complex<T>& m){
