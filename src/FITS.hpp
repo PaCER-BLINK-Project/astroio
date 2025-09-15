@@ -201,8 +201,8 @@ class FITS {
                 this->bitpix = LONG_IMG;
             }else 
                 throw std::invalid_argument {"set_image: data type of first argument not recognised."};
-            axes[0] = yDim;
-            axes[1] = xDim;
+            axes[0] = xDim;
+            axes[1] = yDim;
         }
 
 

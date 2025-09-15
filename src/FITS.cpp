@@ -37,8 +37,8 @@ void FITS::HDU::set_image(int bitpix, char *data, long xDim, long yDim){
     if(this->data) delete[] static_cast<char*>(this->data);
     this->data = data;
     this->bitpix = bitpix;
-    axes[0] = yDim;
-    axes[1] = xDim;
+    axes[0] = xDim;
+    axes[1] = yDim;
     switch (bitpix){
     case FLOAT_IMG: 
         this->datatype = TFLOAT;
@@ -137,7 +137,7 @@ FITS FITS::from_file(std::string filename){
         // read data
         long fPixel[2] {1, 1};
         CHECK_FITS_ERROR(fits_read_pix(fptr, dataType, fPixel, axes[0] * axes[1], nullptr, data, nullptr, &status));
-        cHDU.set_image(bitPix, data, axes[1], axes[0]);
+        cHDU.set_image(bitPix, data, axes[0], axes[1]);
     }
     return fitsObj;
 }
