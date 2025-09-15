@@ -23,45 +23,18 @@ class Images : public MemoryBuffer<std::complex<float>> {
     double pixscale_ra, pixscale_dec; // separate pixscales for RA,DEC due to different UV coverage (MAX(u) and MAX(v))
 
    Images(MemoryBuffer<std::complex<float>>&& data, const ObservationInfo& obsInfo, unsigned int n_intervals,
-            unsigned int n_channels, unsigned int side_size) : MemoryBuffer {std::move(data)} {
+            unsigned int n_channels, unsigned int side_size, double ra_deg, double dec_deg,
+            double pixscale_ra, double pixscale_dec) : MemoryBuffer {std::move(data)} {
         this->obsInfo = obsInfo;
         this->n_intervals = n_intervals;
         this->n_channels = n_channels;
         this->side_size = side_size;
+        this->pixscale_dec = pixscale_dec;
+        this->pixscale_ra = pixscale_ra;
+        this->ra_deg = ra_deg;
+        this->dec_deg = dec_deg;
     }
 
-    Images(const Images& other) : MemoryBuffer {other} {
-        obsInfo = other.obsInfo;
-        n_intervals = other.n_intervals;
-        n_channels = other.n_channels;
-        side_size = other.side_size;
-    }
-
-    Images(Images&& other) : MemoryBuffer {std::move(other)} {
-        obsInfo = other.obsInfo;
-        n_intervals = other.n_intervals;
-        n_channels = other.n_channels;
-        side_size = other.side_size;
-    }
-
-    Images& operator=(Images& other){
-        if(this == &other) return *this;
-        MemoryBuffer::operator=(other);
-        obsInfo = other.obsInfo;
-        n_intervals = other.n_intervals;
-        n_channels = other.n_channels;
-        side_size = other.side_size;
-        return *this;
-    }
-
-    Images& operator=(Images&& other){
-        MemoryBuffer::operator=(std::move(other));
-        obsInfo = other.obsInfo;
-        n_intervals = other.n_intervals;
-        n_channels = other.n_channels;
-        side_size = other.side_size;
-        return *this;
-    }
 
     void set_flags(const std::vector<bool>& flags) {
         this->flags = flags;
