@@ -317,7 +317,7 @@ Visibilities Visibilities::from_fits_file(const std::string& filename, const Obs
 
     FITS fitsImage {FITS::from_file(filename)};
     ObservationInfo obsInfo {oInfo};
-    const unsigned int n_baselines {(obsInfo.nAntennas + 1) * (obsInfo.nAntennas / 2)};
+    const unsigned int n_baselines {((obsInfo.nAntennas + 1) * obsInfo.nAntennas) / 2};
     const size_t matrixSize {n_baselines * obsInfo.nPolarizations * obsInfo.nPolarizations};
 
     size_t nHDUs {fitsImage.size()};

@@ -252,7 +252,7 @@ class Visibilities : public MemoryBuffer<std::complex<float>> {
     
     // Number of complex visibilities in one frequency channel.
     size_t matrix_size() const {
-        const size_t n_baselines {(obsInfo.nAntennas + 1) * (obsInfo.nAntennas / 2)};
+        const size_t n_baselines {((obsInfo.nAntennas + 1) * obsInfo.nAntennas) / 2};
         return n_baselines * obsInfo.nPolarizations * obsInfo.nPolarizations;
     }
 
