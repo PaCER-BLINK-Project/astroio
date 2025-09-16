@@ -119,25 +119,27 @@ FITS FITS::from_file(std::string filename){
         }
             
         CHECK_FITS_ERROR(fits_get_img_dim(fptr, &dims, &status));
-        if(dims != 2){
+        if(dims == 2){
+            // it is an actual image.
+            // get the data type used
+            CHECK_FITS_ERROR(fits_get_img_type(fptr,&bitPix, &status));
+            CHECK_FITS_ERROR(fits_get_img_size(fptr, dims, axes, &status));
+            data = new char[axes[0] * axes[1] * abs(bitPix) / 8];
+            switch (bitPix) {
+                case BYTE_IMG: dataType = TBYTE; break;
+                case LONG_IMG: dataType = TLONG; break;
+                case FLOAT_IMG: dataType = TFLOAT; break;
+                case DOUBLE_IMG: dataType = TDOUBLE; break;
+                default: throw std::runtime_error{"FITS::from_file: data type not supported."};
+            }
+            // read data
+            long fPixel[2] {1, 1};
+            CHECK_FITS_ERROR(fits_read_pix(fptr, dataType, fPixel, axes[0] * axes[1], nullptr, data, nullptr, &status));
+            cHDU.set_image(bitPix, data, axes[0], axes[1]);
+        } else if(dims != 0){ // 0 is an empty HDU - it is ok, just header information.
             std::cerr << "Unexpected number of dimensions in fits file: " << dims << " instead of 2." << std::endl;
             throw std::exception();
         }
-        // get the data type used
-        CHECK_FITS_ERROR(fits_get_img_type(fptr,&bitPix, &status));
-        CHECK_FITS_ERROR(fits_get_img_size(fptr, dims, axes, &status));
-        data = new char[axes[0] * axes[1] * abs(bitPix) / 8];
-        switch (bitPix) {
-            case BYTE_IMG: dataType = TBYTE; break;
-            case LONG_IMG: dataType = TLONG; break;
-            case FLOAT_IMG: dataType = TFLOAT; break;
-            case DOUBLE_IMG: dataType = TDOUBLE; break;
-            default: throw std::runtime_error{"FITS::from_file: data type not supported."};
-        }
-        // read data
-        long fPixel[2] {1, 1};
-        CHECK_FITS_ERROR(fits_read_pix(fptr, dataType, fPixel, axes[0] * axes[1], nullptr, data, nullptr, &status));
-        cHDU.set_image(bitPix, data, axes[0], axes[1]);
     }
     return fitsObj;
 }
@@ -156,11 +158,17 @@ void FITS::to_file(std::string filename){
     CHECK_FITS_ERROR(fits_create_file(&fitsFP, filename.c_str(), &status));
     for(HDU& cHDU : this->HDUs){
         status = 0;
-        axes[0] = cHDU.get_ydim();
-        axes[1] = cHDU.get_xdim();
-        CHECK_FITS_ERROR(fits_create_img(fitsFP, cHDU.bitpix, 2,  axes, &status));
-        long fPixel[2] {1, 1};
-        CHECK_FITS_ERROR(fits_write_pix(fitsFP, cHDU.datatype, fPixel, axes[0] * axes[1], (char *) cHDU.get_image_data(), &status));
+        if(cHDU.data == nullptr) {
+            // It is an empty HDU. Probably the primary HDU.
+            // only containing header keywords
+            CHECK_FITS_ERROR(fits_create_img(fitsFP, 32, 0,  nullptr, &status));
+        }else{
+            axes[0] = cHDU.get_ydim();
+            axes[1] = cHDU.get_xdim();
+            CHECK_FITS_ERROR(fits_create_img(fitsFP, cHDU.bitpix, 2,  axes, &status));
+            long fPixel[2] {1, 1};
+            CHECK_FITS_ERROR(fits_write_pix(fitsFP, cHDU.datatype, fPixel, axes[0] * axes[1], (char *) cHDU.get_image_data(), &status));
+        }
         for(auto& header_entry : cHDU.get_header()){
 	    auto key = header_entry.first;
 	    auto entry = header_entry.second;

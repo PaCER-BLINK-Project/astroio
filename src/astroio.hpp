@@ -271,6 +271,14 @@ class Visibilities : public MemoryBuffer<std::complex<float>> {
 
 
     /**
+     * @brief Save visibilities to a FITS file on disk using MWAX format.
+     * 
+     * @param filename name of the output file.
+     */
+    void to_fits_file_mwax(const std::string& filename) const;
+
+
+    /**
      * @brief Load visibilities from a FITS file.
      * 
      * @param filename path to the FITS file to read visibilities from.

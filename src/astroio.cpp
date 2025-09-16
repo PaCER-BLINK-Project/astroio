@@ -376,6 +376,55 @@ void Visibilities::to_fits_file(const std::string& filename) const{
 
 
 
+void Visibilities::to_fits_file_mwax(const std::string& filename) const{
+    float integrationTime {static_cast<float>(obsInfo.timeResolution * nIntegrationSteps)};
+    const long n_baselines {((obsInfo.nAntennas + 1) * obsInfo.nAntennas) / 2};
+    FITS fits_image;
+    // Create primary HDU
+    FITS::HDU primary_hdu;
+    primary_hdu.add_keyword("TIME", static_cast<long>(obsInfo.startTime), "Unix time (seconds)");
+    primary_hdu.add_keyword("MILLITIM", 0, "Milliseconds since TIME");
+    primary_hdu.add_keyword("INTTIME", integrationTime, "Integration time (s)");
+    primary_hdu.add_keyword("CORR_VER", 2, "Correlator version (2 = MWAX)");
+    primary_hdu.add_keyword("PROJID", std::string {"XXX"}, "Project ID");
+    primary_hdu.add_keyword("OBSID", atoi(obsInfo.id.c_str()), "Project ID");
+    primary_hdu.add_keyword("FINECHAN", obsInfo.frequencyResolution * nAveragedChannels * 1e3, "Fine channel width in KHz");
+    primary_hdu.add_keyword("NFINECHS", nFrequencies, "Number of fine channels in coarse channel");
+    primary_hdu.add_keyword("NINPUTS", obsInfo.nAntennas * obsInfo.nPolarizations, "Number of RF inputs.");
+
+    fits_image.add_HDU(primary_hdu);
+    MemoryBuffer<float> weights {4 * static_cast<size_t>(n_baselines)};
+    // currently, all weights should be 1
+    for(int i {0}; i < weights.size(); i++) weights[i] = 1.0f;
+
+    for(unsigned int interval {0}; interval < this->integration_intervals(); interval++){
+        FITS::HDU image_hdu;
+        std::complex<float>* pToMatrix = const_cast<std::complex<float>*>(this->data() + interval * (nFrequencies * this->matrix_size()));
+        int msElapsed {static_cast<int>(interval *  (obsInfo.timeResolution * nIntegrationSteps * 1e3))};
+        long naxis1 {obsInfo.nPolarizations * obsInfo.nPolarizations * 2 * static_cast<long>(nFrequencies)};
+        image_hdu.set_image(reinterpret_cast<float*>(pToMatrix), naxis1, n_baselines);
+        image_hdu.add_keyword("TIME", static_cast<long>(obsInfo.startTime), "Unix time (seconds)");
+        image_hdu.add_keyword("MILLITIM", msElapsed, "Milliseconds since TIME");
+        image_hdu.add_keyword("INTTIME", integrationTime, "Integration time (s)");
+        image_hdu.add_keyword("COARSE_CHAN", obsInfo.coarseChannel, "Receiver Coarse Channel Number (only used in offline mode)");
+        image_hdu.add_keyword("MARKER", static_cast<int>(interval), "Marker");
+        fits_image.add_HDU(image_hdu);
+
+        // Add the weight HDU now
+        FITS::HDU weight_hdu;
+        weight_hdu.set_image(weights.data(), 4, n_baselines);
+        weight_hdu.add_keyword("TIME", static_cast<long>(obsInfo.startTime), "Unix time (seconds)");
+        weight_hdu.add_keyword("MILLITIM", msElapsed, "Milliseconds since TIME");
+        weight_hdu.add_keyword("INTTIME", integrationTime, "Integration time (s)");
+        weight_hdu.add_keyword("MARKER", static_cast<int>(interval), "Marker");
+        fits_image.add_HDU(weight_hdu);
+
+    }
+    fits_image.to_file(filename);
+}
+
+
+
 /**
  * @brief Extract information, such as obsid, coarse channel and timestamp, contained in the name 
  * of the .dat file where MWA Phase I voltages are stored.
