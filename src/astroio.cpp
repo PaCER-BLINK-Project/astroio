@@ -378,7 +378,8 @@ void Visibilities::to_fits_file(const std::string& filename) const{
 
 void Visibilities::to_fits_file_mwax(const std::string& filename) const{
     float integrationTime {static_cast<float>(obsInfo.timeResolution * nIntegrationSteps)};
-    const long n_baselines {((obsInfo.nAntennas + 1) * obsInfo.nAntennas) / 2};
+    const size_t n_baselines {((obsInfo.nAntennas + 1) * obsInfo.nAntennas) / 2};
+    const unsigned int n_pols {obsInfo.nPolarizations * obsInfo.nPolarizations};
     FITS fits_image;
     // Create primary HDU
     FITS::HDU primary_hdu;
@@ -394,15 +395,29 @@ void Visibilities::to_fits_file_mwax(const std::string& filename) const{
 
     fits_image.add_HDU(primary_hdu);
     MemoryBuffer<float> weights {4 * static_cast<size_t>(n_baselines)};
+    // for each integration interval, the oder of data is: baseline | channel | pol | r,i
+    // So, need to transform data.
+    MemoryBuffer<std::complex<float>> reordered_buffer {integration_intervals() * n_baselines * nFrequencies * n_pols};
+    // copy data in the format expected for MWAX visibilities
+    for(unsigned int interval {0}; interval < integration_intervals(); interval++){
+        for(size_t b {0}; b < n_baselines; b++){
+            for(unsigned int ch {0}; ch < nFrequencies; ch++){
+                for(unsigned int pol {0}; pol < n_pols; pol++)
+                    reordered_buffer[interval * (n_baselines * nFrequencies * n_pols) + b * (nFrequencies * n_pols) + ch*n_pols + pol] = \
+                        data()[interval * n_baselines * n_pols * nFrequencies + \
+                            ch * n_baselines * n_pols + b * n_pols + pol];
+            }
+        }
+    }
     // currently, all weights should be 1
     for(int i {0}; i < weights.size(); i++) weights[i] = 1.0f;
 
     for(unsigned int interval {0}; interval < this->integration_intervals(); interval++){
         FITS::HDU image_hdu;
-        std::complex<float>* pToMatrix = const_cast<std::complex<float>*>(this->data() + interval * (nFrequencies * this->matrix_size()));
+        std::complex<float>* pToMatrix = reordered_buffer.data() + interval * (nFrequencies * n_pols * n_baselines);
         int msElapsed {static_cast<int>(interval *  (obsInfo.timeResolution * nIntegrationSteps * 1e3))};
-        long naxis1 {obsInfo.nPolarizations * obsInfo.nPolarizations * 2 * static_cast<long>(nFrequencies)};
-        image_hdu.set_image(reinterpret_cast<float*>(pToMatrix), naxis1, n_baselines);
+        long naxis1 {n_pols * 2 * static_cast<long>(nFrequencies)};
+        image_hdu.set_image(reinterpret_cast<float*>(pToMatrix), naxis1, static_cast<long>(n_baselines));
         image_hdu.add_keyword("TIME", static_cast<long>(obsInfo.startTime), "Unix time (seconds)");
         image_hdu.add_keyword("MILLITIM", msElapsed, "Milliseconds since TIME");
         image_hdu.add_keyword("INTTIME", integrationTime, "Integration time (s)");
