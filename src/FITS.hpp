@@ -8,6 +8,8 @@
 #include <sstream>
 #include <fitsio.h>
 #include <stdexcept>
+#include <cmath>
+#include <iostream>
 
 /**
  * @brief A class that handles I/O operations on FITS files.
@@ -134,7 +136,12 @@ class FITS {
             he.keyword = key;
             he.comment = comment;
             if(typeid(T) == typeid(float) || typeid(T) == typeid(double)){
-                he.data.dval = static_cast<double>(value);
+                if(std::isnan(value) || std::isinf(value)){
+                    std::cerr << "WARNING: FITS::add_keyword: value for " << key << " is not valid." << std::endl;
+                    he.data.dval = 0.0;
+                }else{
+                    he.data.dval = static_cast<double>(value);
+                }
                 he.data_type = TDOUBLE;
             }else{
                 he.data.llval = static_cast<long long>(value);
