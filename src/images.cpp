@@ -116,7 +116,7 @@ void Images::to_fits_file(size_t interval, size_t fine_channel, const std::strin
         blink::imager::create_directory(directory_path);
     if(!img_real) img_real.allocate(this->image_size());
     if(!img_imag) img_imag.allocate(this->image_size());
-    std::complex<float> *current_data {this->data() + this->image_size() * this->nFrequencies * interval + fine_channel * this->image_size()}; 
+    std::complex<float> *current_data {this->data() + this->image_size() * this->n_channels * interval + fine_channel * this->image_size()}; 
     std::stringstream full_file_path;
     full_file_path << std::setfill('0') << directory_path << "/" << "start_time_" << obsInfo.startTime << \
         "_" << "int_" << std::setw(2) << interval <<  std::setw(0) << "_coarse_" <<  std::setw(3) <<  obsInfo.coarseChannel <<  std::setw(0) << "_fine_ch" <<  std::setw(2) << fine_channel;
@@ -142,8 +142,8 @@ void Images::to_fits_file(size_t interval, size_t fine_channel, const std::strin
 
 void Images::to_fits_files(const std::string& directory_path, bool save_as_complex, bool save_imaginary) {
     if(on_gpu()) to_cpu();
-    for(size_t interval {0}; interval < this->integration_intervals(); interval++){
-        for(size_t fine_channel {0}; fine_channel < this->nFrequencies; fine_channel++){
+    for(size_t interval {0}; interval < this->n_intervals; interval++){
+        for(size_t fine_channel {0}; fine_channel < this->n_channels; fine_channel++){
             to_fits_file(interval, fine_channel, directory_path, save_as_complex, save_imaginary);
         }
     }

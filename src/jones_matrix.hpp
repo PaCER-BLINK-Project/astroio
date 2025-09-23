@@ -36,6 +36,12 @@ class JonesMatrix {
         return res;
     }
 
+    #ifdef __GPU__
+    __host__ __device__
+    #endif
+    bool isnan() const {
+        return XX.isnan() || XY.isnan() || YX.isnan() || YY.isnan();
+    }
 
     #ifdef __GPU__
     __host__ __device__

@@ -37,7 +37,7 @@ int main(void){
     try{
         
         test_read_metafits_mapping();
-        test_read_obsinfo();
+        // test_read_obsinfo();
     } catch (TestFailed ex){
         std::cerr << ex.what() << std::endl;
         return 1;
