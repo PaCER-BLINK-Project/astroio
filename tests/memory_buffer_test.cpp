@@ -29,7 +29,9 @@ void test_memory_buffer(){
     gpuMemcpy(&out, dev_out, sizeof(int), gpuMemcpyDeviceToHost);
     gpuDeviceSynchronize();
     mem_cpu.to_cpu();
-    
+
+    gpuFree(dev_out);
+
     int expected_out {0};
     auto another_ptr = mem_cpu.data();
     for(int i {0}; i < 5; i++){
@@ -40,7 +42,7 @@ void test_memory_buffer(){
         ss << "'test_memory_buffer' failed: wrong result (" << out << " != " << expected_out << ").\n";
         throw TestFailed(ss.str());
     }
-    
+
     std::cout << "'test_memory_buffer' passed." << std::endl;
 }
 
@@ -50,7 +52,7 @@ void test_memory_buffer_default_constructor(){
     MemoryBuffer<int> mem_cpu;
     if(mem_cpu) throw TestFailed("'test_memory_buffer_default_constructor' failed: "
         "expected null object after empty constructor.");
-    
+
     mem_cpu.allocate(5);
     auto ptr = mem_cpu.data();
     for(int i {0}; i < 5; i++){
@@ -63,8 +65,9 @@ void test_memory_buffer_default_constructor(){
     test_values<<<1, 5>>>(mem_cpu.data(), mem_cpu.size(), dev_out);
     gpuMemcpy(&out, dev_out, sizeof(int), gpuMemcpyDeviceToHost);
     gpuDeviceSynchronize();
+    gpuFree(dev_out);
     mem_cpu.to_cpu();
-    
+
     int expected_out {0};
     auto another_ptr = mem_cpu.data();
     for(int i {0}; i < 5; i++){
@@ -75,7 +78,7 @@ void test_memory_buffer_default_constructor(){
         ss << "'test_memory_buffer_default_constructor' failed: wrong result (" << out << " != " << expected_out << ").\n";
         throw TestFailed(ss.str());
     }
-    
+
     std::cout << "'test_memory_buffer_default_constructor' passed." << std::endl;
 }
 
@@ -89,7 +92,7 @@ int main(void){
     }
     data_root_dir = std::string{path_to_data};
     try{
-        
+
         test_memory_buffer();
         test_memory_buffer_default_constructor();
 
@@ -97,7 +100,7 @@ int main(void){
         std::cerr << ex.what() << std::endl;
         return 1;
     }
-    
+
     std::cout << "All tests passed." << std::endl;
     return 0;
 }
