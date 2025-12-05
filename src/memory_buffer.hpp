@@ -2,8 +2,8 @@
 #define __MEMORY_BUFFER_H__
 
 #include <fstream>
-#include "gpu_macros.hpp"
 #include <iostream>
+#include "gpu_macros.hpp"
 
 enum class MemoryType {
     PAGEABLE, // memory allocated with malloc or new[]
@@ -25,7 +25,7 @@ class MemoryBuffer {
      * @brief Create a new MemoryBuffer object which can hold a pointer to GPU or CPU allocated memory.
      * @param n_elements Number of elements to allocate space for in the buffer.
      * @param mem_type type of memory to be allocated. See `MemoryType`.
-     * 
+     *
     */
     MemoryBuffer(size_t n_elements, MemoryType mem_type = MemoryType::PAGEABLE) {
         allocate(n_elements, mem_type);
@@ -66,12 +66,10 @@ class MemoryBuffer {
     }
 
     /**
-     * @brief Allocates memory space for the `MemoryBuffer` object. If the object is already associated 
+     * @brief Allocates memory space for the `MemoryBuffer` object. If the object is already associated
      * with previously allocated memory, that memory allocation is deleted.
      * @param n_elements Number of elements to allocate space for in the buffer.
-     * @param on_gpu Indicate whether to allocate memory on GPU (`true`) or CPU (`false`). 
-     * @param pinned Indicate whether the memory must be pinned (only for GPU enabled installations).
-     * 
+     * @param mem_type Type of memory to be allocated. See `MemoryType`.
     */
     void allocate(size_t n_elements, MemoryType mem_type = MemoryType::PAGEABLE){
         if(_data) this->~MemoryBuffer();
@@ -100,6 +98,7 @@ class MemoryBuffer {
 
     /**
      * @brief Transfer data to CPU.
+     * @param to_type Type of memory to convert to
     */
     void to_cpu(MemoryType to_type = MemoryType::PAGEABLE) {
         #ifdef __GPU__
@@ -178,6 +177,7 @@ class MemoryBuffer {
 	__host__ __device__
 	#endif
     const T* data() const {return _data;}
+
     /**
      * @return `true` if memory resides on GPU, `false` otherwise.
     */
@@ -187,28 +187,32 @@ class MemoryBuffer {
      * @return `true` if memory has been allocated as pinned, `false` otherwise.
     */
     bool pinned() const {return mem_type == MemoryType::PINNED;}
+
     /**
      * @brief return the number of elements in the buffer.
     */
     size_t size() const {return n;};
 
-    MemoryBuffer(const MemoryBuffer& other){
+    MemoryBuffer(const MemoryBuffer& other) {
+
         n = other.n;
         mem_type = other.mem_type;
         _data = nullptr;
-        if(mem_type == MemoryType::PAGEABLE && other._data){
-            _data = new T[n];
+
+        if (other._data) {
+            allocate(n, mem_type);
+        }
+
+        if (mem_type == MemoryType::PAGEABLE && other._data) {
             memcpy(_data, other._data, n * sizeof(T));
         }
+
         #ifdef __GPU__
-        if(mem_type == MemoryType::PINNED && other._data){
-            gpuHostAlloc(&_data, n * sizeof(T));
+        if(mem_type == MemoryType::PINNED && other._data) {
             memcpy(_data, other._data, n * sizeof(T));
-        }else if(mem_type == MemoryType::DEVICE && other._data){
-            gpuMalloc(&_data, n * sizeof(T));
+        } else if (mem_type == MemoryType::DEVICE && other._data) {
             gpuMemcpy(_data, other._data, n * sizeof(T), gpuMemcpyDeviceToDevice);
-        }else if(mem_type == MemoryType::MANAGED && other._data){
-            gpuMallocManaged(&_data, n * sizeof(T));
+        } else if (mem_type == MemoryType::MANAGED && other._data) {
             memcpy(_data, other._data, n * sizeof(T));
         }
         #endif
@@ -223,21 +227,25 @@ class MemoryBuffer {
     MemoryBuffer& operator=(const MemoryBuffer& other){
         if(this == &other) return *this;
         if(_data) this->~MemoryBuffer();
+
         n = other.n;
         mem_type = other.mem_type;
-        if(mem_type == MemoryType::PAGEABLE && other._data){
-            _data = new T[n];
+        _data = nullptr;
+
+        if (other._data) {
+            allocate(n, mem_type);
+        }
+
+        if (mem_type == MemoryType::PAGEABLE && other._data) {
             memcpy(_data, other._data, n * sizeof(T));
         }
+
         #ifdef __GPU__
-        if(mem_type == MemoryType::PINNED && other._data){
-            gpuHostAlloc(&_data, n * sizeof(T));
+        if (mem_type == MemoryType::PINNED && other._data) {
             memcpy(_data, other._data, n * sizeof(T));
-        }else if(mem_type == MemoryType::DEVICE && other._data){
-            gpuMalloc(&_data, n * sizeof(T));
+        } else if (mem_type == MemoryType::DEVICE && other._data) {
             gpuMemcpy(_data, other._data, n * sizeof(T), gpuMemcpyDeviceToDevice);
-        }else if(mem_type == MemoryType::MANAGED && other._data){
-            gpuMallocManaged(&_data, n * sizeof(T));
+        } else if (mem_type == MemoryType::MANAGED && other._data) {
             memcpy(_data, other._data, n * sizeof(T));
         }
         #endif
@@ -260,7 +268,7 @@ class MemoryBuffer {
         if(mem_type == MemoryType::PAGEABLE && _data) delete[] _data;
         #ifdef __GPU__
         if(mem_type == MemoryType::PINNED && _data) gpuHostFree(_data);
-        if((mem_type == MemoryType::DEVICE || 
+        if((mem_type == MemoryType::DEVICE ||
             mem_type == MemoryType::MANAGED) && _data) gpuFree(_data);
         #endif
     }
