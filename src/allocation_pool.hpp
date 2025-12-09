@@ -19,12 +19,12 @@ protected:
      * @param n size of buffer to allocate
      * @return char* pointer to newly allocated memory
      */
-    virtual char* alloc(size_t n) = 0;
+    virtual char* alloc(size_t n) const = 0;
 
     /**
      * @brief Abstract method for freeing memory
      */
-    virtual void free(char* ptr, size_t n) = 0;
+    virtual void free(char* ptr) const = 0;
 
 public:
     AllocationPool() {}
@@ -114,7 +114,7 @@ public:
             unused[n_bytes].push_back(ptr);
         } else {
             // if we're low on memory, just free the buffer
-            this->free(ptr, n_bytes);
+            this->free(ptr);
             _total -= n_bytes;
         }
     };
@@ -125,7 +125,7 @@ public:
     void clear() {
         for (auto& [size, vec] : unused) {
             for (auto& mem : vec) {
-                this->free(mem, size);
+                this->free(mem);
                 _total -= size;
             }
             vec.clear();
@@ -150,7 +150,7 @@ public:
             while (!vec.empty() && freed < to_free) {
                 auto* ptr = vec.back();
                 vec.pop_back();
-                this->free(ptr, key);
+                this->free(ptr);
                 freed += key;
             }
 
@@ -184,13 +184,11 @@ public:
 
 class PageableAllocationPool : public AllocationPool {
 protected:
-    char* alloc(size_t n) override {
-        std::clog << "PageableAllocationPool allocated " << n << " bytes\n";
+    char* alloc(size_t n) const override {
         return new char[n];
     }
 
-    void free(char* ptr, size_t n) override {
-        std::clog << "PageableAllocationPool freed " << n << " bytes\n";
+    void free(char* ptr) const override {
         delete[] ptr;
     }
 public:
@@ -210,15 +208,13 @@ public:
 #ifdef __GPU__
 class DeviceAllocationPool : public AllocationPool {
 protected:
-    char* alloc(size_t n) override {
-        std::clog << "DeviceAllocationPool allocated " << n << " bytes\n";
+    char* alloc(size_t n) const override {
         char* ptr;
         gpuMalloc(&ptr, n);
         return ptr;
     }
 
-    void free(char* ptr, size_t n) override {
-        std::clog << "DeviceAllocationPool freed " << n << " bytes\n";
+    void free(char* ptr) const override {
         gpuFree(ptr);
     }
 public:
@@ -237,15 +233,13 @@ public:
 
 class PinnedAllocationPool : public AllocationPool {
 protected:
-    char* alloc(size_t n) override {
-        std::clog << "PinnedAllocationPool allocated " << n << " bytes\n";
+    char* alloc(size_t n) const override {
         char* ptr;
         gpuHostAlloc(&ptr, n);
         return ptr;
     }
 
-    void free(char* ptr, size_t n) override {
-        std::clog << "PinnedAllocationPool freed " << n << " bytes\n";
+    void free(char* ptr) const override {
         gpuHostFree(ptr);
     }
 public:
@@ -264,15 +258,13 @@ public:
 
 class ManagedAllocationPool : public AllocationPool {
 protected:
-    char* alloc(size_t n) override {
-        std::clog << "ManagedAllocationPool allocated " << n << " bytes\n";
+    char* alloc(size_t n) const override {
         char* ptr;
         gpuMallocManaged(&ptr, n);
         return ptr;
     }
 
-    void free(char* ptr, size_t n) override {
-        std::clog << "ManagedAllocationPool freed " << n << " bytes\n";
+    void free(char* ptr) const override {
         gpuFree(ptr);
     }
 public:
