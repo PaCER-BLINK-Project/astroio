@@ -15,7 +15,6 @@ __global__ void test_values(int* values, int n, int* out){
 }
 
 void test_memory_buffer(){
-    // TODO: Run valgrind to check for memory leaks
     MemoryBuffer<int> mem_cpu {5};
     auto ptr = mem_cpu.data();
     for(int i {0}; i < 5; i++){

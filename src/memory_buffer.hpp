@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iostream>
 #include "gpu_macros.hpp"
+#include "allocation_pool.hpp"
 
 enum class MemoryType {
     PAGEABLE, // memory allocated with malloc or new[]
@@ -19,6 +20,62 @@ class MemoryBuffer {
     T* _data = nullptr;
     size_t n {0};
     MemoryType mem_type;
+
+    protected:
+
+    /**
+     * @brief Get AllocationPool for given memory type.
+     *
+     * Calls AllocationPool::instance() to get a reference to a singleton object.
+     * These singletons are static function-locals of instance(), making
+     *  them inherently thread-safe (since C++11) and removing the need to
+     *  make them static here too.
+     *
+     * @exception std::invalid_argument GPU is not enabled and mem_type is
+     * anything other than `MemoryType::PAGEABLE`
+     *
+     */
+    inline static AllocationPool& alloc_pool(MemoryType mem_type) {
+        switch (mem_type) {
+            case MemoryType::PAGEABLE:
+                return PageableAllocationPool::instance();
+        #ifdef __GPU__
+            case MemoryType::PINNED:
+                return PinnedAllocationPool::instance();
+            case MemoryType::DEVICE:
+                return DeviceAllocationPool::instance();
+            case MemoryType::MANAGED:
+                return ManagedAllocationPool::instance();
+        #else
+            default:
+                throw std::invalid_argument{
+                    "MemoryBuffer: GPU not enabled, must use pageable memory."
+                };
+        #endif
+        }
+    }
+
+    /**
+     * @brief allocate new buffers without side-effects.
+     */
+    T* _allocate(MemoryType mtype, size_t n) const {
+        auto& pool = alloc_pool(mtype);
+        char* cptr = pool.allocate(n * sizeof(T));
+        return reinterpret_cast<T*>(cptr);
+    }
+
+    /**
+     * @brief deallocate buffer without side-effects.
+     */
+    void _deallocate(MemoryType mtype, T* ptr, size_t n) const {
+        if (!ptr) return;
+
+        auto& pool = alloc_pool(mtype);
+        pool.deallocate(
+            reinterpret_cast<char*>(ptr),
+            n * sizeof(T)
+        );
+    }
 
     public:
     /**
@@ -42,16 +99,28 @@ class MemoryBuffer {
      * @param buffer Pointer to a pre-allocated memory location the MemoryObject will handle.
      * @param n_elements Number of elements in the buffer.
      * @param mem_type type of memory to be allocated. See `MemoryType`.
+     *
+     * @throws std::invalid_argument if `mem_type` is not pageable on a CPU-only build
+     * @throws std::invalid_argument if `n_elements` is zero
+     * @throws std::invalid_argument if `buffer` is nullptr
      */
     MemoryBuffer(T *buffer, size_t n_elements, MemoryType mem_type){
         #ifndef __GPU__
         if(mem_type != MemoryType::PAGEABLE)
-            throw std::invalid_argument { "MemoryBuffer constructor: cannot use anything other than pageable memory "
-            "on a CPU only build of the software." };
+            throw std::invalid_argument {
+                "MemoryBuffer constructor: cannot use anything other than "
+                "pageable memory on a CPU only build of the software"
+            };
         #endif
-        if(n_elements == 0) throw std::invalid_argument {"MemoryBuffer constructor: `n_elements` "
-        "must be a positive number."};
-        if(!buffer) throw std::invalid_argument {"MemoryBuffer constructor: won't accept a null pointer."};
+        if(n_elements == 0)
+            throw std::invalid_argument {
+                "MemoryBuffer constructor: `n_elements` must be a positive number."
+            };
+        if(!buffer)
+            throw std::invalid_argument {
+                "MemoryBuffer constructor: won't accept a null pointer."
+            };
+
         this->_data = buffer;
         this->n = n_elements;
         this->mem_type = mem_type;
@@ -66,32 +135,27 @@ class MemoryBuffer {
     }
 
     /**
-     * @brief Allocates memory space for the `MemoryBuffer` object. If the object is already associated
-     * with previously allocated memory, that memory allocation is deleted.
+     * @brief Allocates memory space for the `MemoryBuffer` object.
+     *
+     * If the object is already associated with previously allocated memory,
+     * that memory allocation is deleted.
+     *
      * @param n_elements Number of elements to allocate space for in the buffer.
      * @param mem_type Type of memory to be allocated. See `MemoryType`.
+     *
+     * @exception std::invalid_argument if `n_elements` is less than zero.
+     * @exception std::invalid_argument if CPU-only build and `mem_type` is not pageable.
     */
-    void allocate(size_t n_elements, MemoryType mem_type = MemoryType::PAGEABLE){
-        if(_data) this->~MemoryBuffer();
-        #ifndef __GPU__
-        if(mem_type != MemoryType::PAGEABLE)
-            throw std::invalid_argument { "MemoryBuffer constructor: cannot use anything other than pageable memory "
-            "on a CPU only build of the software." };
-        #endif
-        if(n_elements == 0) throw std::invalid_argument {"MemoryBuffer::allocate: `n_elements` "
-        "must be a positive number."};
-        #ifdef __GPU__
-        if(mem_type == MemoryType::PINNED) {
-            gpuHostAlloc(&this->_data, sizeof(T) * n_elements);
-        }else if(mem_type == MemoryType::DEVICE){
-            gpuMalloc(&this->_data, sizeof(T) * n_elements);
-        }else if(mem_type == MemoryType::MANAGED){
-            gpuMallocManaged(&this->_data, sizeof(T) * n_elements);
+    void allocate(size_t n_elements, MemoryType mem_type = MemoryType::PAGEABLE) {
+        if (_data) this->~MemoryBuffer();
+
+        if (n_elements == 0) {
+            throw std::invalid_argument {
+                "MemoryBuffer::allocate: `n_elements` must be greater than zero."
+            };
         }
-        #endif
-        if(mem_type == MemoryType::PAGEABLE){
-            this->_data = new T[n_elements];
-        }
+
+        this->_data = _allocate(mem_type, n_elements);
         this->n = n_elements;
         this->mem_type = mem_type;
     }
@@ -102,18 +166,16 @@ class MemoryBuffer {
     */
     void to_cpu(MemoryType to_type = MemoryType::PAGEABLE) {
         #ifdef __GPU__
-        if(mem_type == MemoryType::DEVICE && _data){
-            T* tmp;
-            if(to_type == MemoryType::PINNED) {
-                gpuHostAlloc(&tmp, sizeof(T) * n);
-                mem_type =  MemoryType::PINNED;
-            } else {
-                tmp = new T[n];
-                mem_type = MemoryType::PAGEABLE;
-            }
-            gpuMemcpy(tmp, _data, sizeof(T) * n, gpuMemcpyDeviceToHost);
-            gpuFree(_data);
+        if (mem_type == MemoryType::DEVICE && _data) {
+
+            T* tmp = _allocate(to_type, n);
+
+            gpuMemcpy(tmp, _data, n * sizeof(T), gpuMemcpyDeviceToHost);
+
+            _deallocate(mem_type, _data, n);
+
             _data = tmp;
+            mem_type = to_type;
         }
         #endif
     }
@@ -121,15 +183,16 @@ class MemoryBuffer {
     /**
      * @brief Transfer data to GPU.
     */
-    void to_gpu(){
+    void to_gpu() {
         #ifdef __GPU__
-        if(mem_type != MemoryType::DEVICE && _data){
-            T* tmp;
-            gpuMalloc(&tmp, sizeof(T) * n);
-            gpuMemcpy(tmp, _data, sizeof(T) * n, gpuMemcpyHostToDevice);
-            if(mem_type == MemoryType::PINNED) gpuHostFree(_data);
-            else if(mem_type == MemoryType::MANAGED) gpuFree(_data);
-            else delete[] _data;
+        if(mem_type != MemoryType::DEVICE && _data) {
+
+            T* tmp = _allocate(MemoryType::DEVICE, n);
+
+            gpuMemcpy(tmp, _data, n * sizeof(T), gpuMemcpyHostToDevice);
+
+            _deallocate(mem_type, _data, n);
+
             _data = tmp;
             mem_type = MemoryType::DEVICE;
         }
@@ -143,11 +206,16 @@ class MemoryBuffer {
     void dump(std::string filename) const {
         this->to_cpu();
         std::ofstream outfile;
+
         outfile.open(filename, std::ofstream::binary);
         outfile.write(reinterpret_cast<char*>(_data), n * sizeof(T));
-        if(!outfile){
-            throw std::runtime_error {"MemoryBuffer: error while dumping data to binary file."};
+
+        if(!outfile) {
+            throw std::runtime_error {
+                "MemoryBuffer: error while dumping data to binary file."
+            };
         }
+
         outfile.close();
     }
 
@@ -160,10 +228,17 @@ class MemoryBuffer {
         infile.seekg(0, infile.end);
         size_t size = infile.tellg();
         infile.seekg(0);
-        char* buffer = new char[size];
-        infile.read (buffer, size);
+
+        char* buffer = alloc_pool(MemoryType::PAGEABLE).allocate(size);
+
+        infile.read(buffer, size);
         infile.close();
-        return MemoryBuffer<T> {reinterpret_cast<T*>(buffer), size / sizeof(T), MemoryType::PAGEABLE};
+
+        return MemoryBuffer<T> {
+            reinterpret_cast<T*>(buffer),
+            size / sizeof(T),
+            MemoryType::PAGEABLE
+        };
     }
 
     /**
@@ -218,6 +293,7 @@ class MemoryBuffer {
         #endif
     }
 
+    // @todo other.n should probably be set to 0
     MemoryBuffer(MemoryBuffer&& other) : n {other.n}, mem_type {other.mem_type},
         _data {other._data}
     {
@@ -264,13 +340,11 @@ class MemoryBuffer {
     T& operator[](int i){ return _data[i]; }
     const T& operator[](int i) const { return _data[i]; }
 
-    ~MemoryBuffer(){
-        if(mem_type == MemoryType::PAGEABLE && _data) delete[] _data;
-        #ifdef __GPU__
-        if(mem_type == MemoryType::PINNED && _data) gpuHostFree(_data);
-        if((mem_type == MemoryType::DEVICE ||
-            mem_type == MemoryType::MANAGED) && _data) gpuFree(_data);
-        #endif
+    ~MemoryBuffer() {
+        if (_data) {
+            _deallocate(mem_type, _data, n);
+            _data = nullptr;
+        }
     }
 };
 
