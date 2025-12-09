@@ -506,8 +506,13 @@ std::vector<std::vector<DatFile>> parse_mwa_dat_files(std::vector<std::string>& 
         if(current_second != obs_info.startTime){
             if(current_second > 0ll){
                 // Finished loading one second of data (24 files).
-                if(one_second_data.size() != 24) throw std::invalid_argument {
-                    "read_mwa_dat_files: one second of data missing .dat files."};
+                if(one_second_data.size() != 24) {
+                    std::stringstream ss;
+                    ss << "read_mwa_dat_files: second " << current_second << " is missing " << (24 - one_second_data.size()) << " coarse channels (.dat files.)";
+                    throw std::invalid_argument {
+                        ss.str()
+                    };
+                }
                 observation.push_back(one_second_data);
                 one_second_data.clear();
             }
