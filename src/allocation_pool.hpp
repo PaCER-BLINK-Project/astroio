@@ -24,7 +24,7 @@ protected:
     /**
      * @brief Abstract method for freeing memory
      */
-    virtual void free(char* ptr) const = 0;
+    virtual void free(char *ptr, size_t n) const = 0;
 
 public:
     AllocationPool() {}
@@ -65,7 +65,7 @@ public:
     /**
      * @brief Get a memory buffer from pool of size `n`, allocates new memory if necessary.
      * @param n_bytes Requested size of memory buffer.
-     * @return char* Pointer to memory buffer.
+     * @return Pointer to memory buffer.
      */
     char* allocate(size_t n_bytes) {
         if (n_bytes == 0) {
@@ -77,14 +77,15 @@ public:
         char* ptr;
         auto it = unused.find(n_bytes);
 
-        // check if key exists in map and the value (vector) is not empty
         if (it != unused.end() && !it->second.empty()) {
 
-            ptr = it->second.back();
-            it->second.pop_back();
+            auto& vec = it->second;
 
-            // remove the key from the map if we've just emptied the vector
-            if (it->second.empty()) {
+            ptr = vec.back();
+            vec.pop_back();
+
+            // dont leave an empty vector hanging around
+            if (vec.empty()) {
                 unused.erase(it);
             }
         } else { // no unused buffer with size `n_bytes`
@@ -96,7 +97,7 @@ public:
     };
 
     /**
-     * @brief returns memory allocation to the pool.
+     * @brief Returns memory allocation to the pool.
      */
     void deallocate(char* ptr, size_t n_bytes) {
         if (ptr == nullptr) {
@@ -114,18 +115,19 @@ public:
             unused[n_bytes].push_back(ptr);
         } else {
             // if we're low on memory, just free the buffer
-            this->free(ptr);
-            _total -= n_bytes;
+            this->free(ptr, n_bytes);
+
+            _total -= std::min(n_bytes, _total); // avoid an overflow
         }
     };
 
     /**
-     * @brief Clears all currently tracked blocks.
+     * @brief Frees all currently unused buffers.
      */
     void clear() {
         for (auto& [size, vec] : unused) {
             for (auto& mem : vec) {
-                this->free(mem);
+                this->free(mem, size);
                 _total -= size;
             }
             vec.clear();
@@ -134,7 +136,8 @@ public:
     };
 
     /**
-     * @brief Free buffers until pool is under max size.
+     * @brief Free unused buffers until pool is under max size or until all
+     *  unused buffers are free.
      * @returns Number of bytes successfully freed.
      */
     size_t cleanup() {
@@ -143,42 +146,29 @@ public:
         size_t to_free = std::min(_total - _max, unused_bytes());
         size_t freed = 0;
 
-        for (auto it = unused.begin(); it != unused.end(); ) {
-            size_t key = it->first;
-            auto &vec = it->second;
+        auto it = unused.begin();
 
-            while (!vec.empty() && freed < to_free) {
-                auto* ptr = vec.back();
+        while (freed < to_free && it != unused.end()) {
+            auto& [key, vec] = *it;
+
+            while (freed < to_free && !vec.empty()) {
+                char* ptr = vec.back();
                 vec.pop_back();
-                this->free(ptr);
+
+                this->free(ptr, key);
+                _total -= key;
                 freed += key;
             }
 
+            // if we've freed everything in that vector, erase entry in the map
             if (vec.empty()) {
                 it = unused.erase(it);
             } else {
                 ++it;
             }
-
-            if (freed >= to_free) {
-                break;
-            }
         }
 
         return freed;
-    }
-
-    /**
-     * @brief For debugging
-     */
-    std::map<size_t, size_t> summary() const {
-        std::map<size_t, size_t> sum;
-
-        for (auto& [key, vec] : unused) {
-            sum[key] = vec.size();
-        }
-
-        return sum;
     }
 };
 
@@ -188,7 +178,7 @@ protected:
         return new char[n];
     }
 
-    void free(char* ptr) const override {
+    void free(char *ptr, size_t n) const override {
         delete[] ptr;
     }
 public:
@@ -214,7 +204,7 @@ protected:
         return ptr;
     }
 
-    void free(char* ptr) const override {
+    void free(char* ptr, size_t n) const override {
         gpuFree(ptr);
     }
 public:
@@ -239,7 +229,7 @@ protected:
         return ptr;
     }
 
-    void free(char* ptr) const override {
+    void free(char *ptr, size_t n) const override {
         gpuHostFree(ptr);
     }
 public:
@@ -264,7 +254,7 @@ protected:
         return ptr;
     }
 
-    void free(char* ptr) const override {
+    void free(char *ptr, size_t n) const override {
         gpuFree(ptr);
     }
 public:

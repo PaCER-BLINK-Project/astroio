@@ -28,12 +28,11 @@ class MemoryBuffer {
      *
      * Calls AllocationPool::instance() to get a reference to a singleton object.
      * These singletons are static function-locals of instance(), making
-     *  them inherently thread-safe (since C++11) and removing the need to
-     *  make them static here too.
+     *  them inherently thread-safe and removing the need to make them static
+     *  here too.
      *
-     * @exception std::invalid_argument GPU is not enabled and mem_type is
-     * anything other than `MemoryType::PAGEABLE`
-     *
+     * @exception std::invalid_argument GPU is not enabled and mem_type is not
+     *  pageable
      */
     inline static AllocationPool& alloc_pool(MemoryType mem_type) {
         switch (mem_type) {
@@ -293,7 +292,7 @@ class MemoryBuffer {
         #endif
     }
 
-    // @todo other.n should probably be set to 0
+    /// @todo other.n should probably be set to 0
     MemoryBuffer(MemoryBuffer&& other) : n {other.n}, mem_type {other.mem_type},
         _data {other._data}
     {
