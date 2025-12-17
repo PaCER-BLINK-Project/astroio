@@ -3,7 +3,14 @@
 
 #include <map>
 #include <vector>
+#include <stdexcept>
 #include "gpu_macros.hpp"
+
+#ifdef _ALLOCPOOL_OFF
+static constexpr bool disable_allocpool = true;
+#else
+static constexpr bool disable_allocpool = false;
+#endif
 
 class AllocationPool {
 
@@ -74,10 +81,19 @@ public:
             };
         }
 
+        if (disable_allocpool) {
+            return alloc(n_bytes);
+        }
+
         char* ptr;
         auto it = unused.find(n_bytes);
 
-        if (it != unused.end() && !it->second.empty()) {
+        if (it == unused.end() || it->second.empty()) {
+
+            ptr = alloc(n_bytes);
+            _total += n_bytes;
+
+        } else {
 
             auto& vec = it->second;
 
@@ -88,9 +104,6 @@ public:
             if (vec.empty()) {
                 unused.erase(it);
             }
-        } else { // no unused buffer with size `n_bytes`
-            ptr = alloc(n_bytes);
-            _total += n_bytes;
         }
 
         return ptr;
@@ -111,12 +124,16 @@ public:
             };
         }
 
+        if (disable_allocpool) {
+            this->free(ptr, n_bytes);
+            return;
+        }
+
         if (_max == 0 || _total <= _max) {
             unused[n_bytes].push_back(ptr);
         } else {
             // if we're low on memory, just free the buffer
             this->free(ptr, n_bytes);
-
             _total -= std::min(n_bytes, _total); // avoid an overflow
         }
     };
@@ -125,6 +142,8 @@ public:
      * @brief Frees all currently unused buffers.
      */
     void clear() {
+        if (disable_allocpool) return;
+
         for (auto& [size, vec] : unused) {
             for (auto& mem : vec) {
                 this->free(mem, size);

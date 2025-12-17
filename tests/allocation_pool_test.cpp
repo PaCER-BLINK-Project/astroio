@@ -143,6 +143,11 @@ void test_cleanup_mostly_in_use() {
 }
 
 int main() {
+    if (disable_allocpool) {
+        std::cout << "Skipping AllocationPool Tests" << std::endl;
+        return 0;
+    }
+
     std::cout << "Starting AllocationPool Tests" << std::endl;
     try {
         test_single_dealloc();

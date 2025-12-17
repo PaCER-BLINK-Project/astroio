@@ -5,11 +5,18 @@ include(CTest)
 
 option(USE_CUDA "Compile the code with NVIDIA GPU support." OFF)
 option(USE_HIP "Compile the code with AMD GPU support." OFF)
+option(USE_ALLOCPOOL "Compile with allocation pool enabled." ON)
 
 if(USE_CUDA)
 enable_language(CUDA CXX)
 endif()
 
+if(NOT USE_ALLOCPOOL)
+    add_definitions(-D_ALLOCPOOL_OFF)
+    message("Allocation Pool: DISABLED")
+else()
+    message("Allocation Pool: ENABLED")
+endif()
 
 
 # External dependencies
