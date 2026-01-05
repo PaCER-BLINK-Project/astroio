@@ -90,7 +90,7 @@ void __gpu_check_error(gpuError_t x, const char *file, int line);
 #define gpuEventRecord(...) GPU_CHECK_ERROR(hipEventRecord(__VA_ARGS__))
 #define gpuEventSynchronize(...) GPU_CHECK_ERROR(hipEventSynchronize(__VA_ARGS__))
 #define gpuEventElapsedTime(...) GPU_CHECK_ERROR(hipEventElapsedTime(__VA_ARGS__))
-#define gpuGetDeviceCount(...) hipGetDeviceCount(__VA_ARGS__)
+#define gpuGetDeviceCount(...) GPU_CHECK_ERROR(hipGetDeviceCount(__VA_ARGS__))
 #define gpuGetLastError hipGetLastError
 #define gpuGetDevice(...) GPU_CHECK_ERROR(hipGetDevice(__VA_ARGS__))
 #define gpuSetDevice(...) GPU_CHECK_ERROR(hipSetDevice(__VA_ARGS__))
