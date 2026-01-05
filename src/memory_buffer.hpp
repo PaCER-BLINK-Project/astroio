@@ -57,7 +57,7 @@ class MemoryBuffer {
     /**
      * @brief allocate new buffers without side-effects.
      */
-    T* _allocate(MemoryType mtype, size_t n) const {
+    static T* _allocate(MemoryType mtype, size_t n) {
         auto& pool = alloc_pool(mtype);
         char* cptr = pool.allocate(n * sizeof(T));
         return reinterpret_cast<T*>(cptr);
@@ -66,14 +66,21 @@ class MemoryBuffer {
     /**
      * @brief deallocate buffer without side-effects.
      */
-    void _deallocate(MemoryType mtype, T* ptr, size_t n) const {
-        if (!ptr) return;
+    static void _deallocate(MemoryType mtype, T* ptr, size_t n) {
+        if (ptr == nullptr) return;
 
         auto& pool = alloc_pool(mtype);
         pool.deallocate(
             reinterpret_cast<char*>(ptr),
             n * sizeof(T)
         );
+    }
+
+    void reset() {
+        if (_data != nullptr) {
+            _deallocate(mem_type, _data, n);
+            _data = nullptr;
+        }
     }
 
     public:
@@ -115,7 +122,7 @@ class MemoryBuffer {
             throw std::invalid_argument {
                 "MemoryBuffer constructor: `n_elements` must be a positive number."
             };
-        if(!buffer)
+        if(buffer == nullptr)
             throw std::invalid_argument {
                 "MemoryBuffer constructor: won't accept a null pointer."
             };
@@ -130,7 +137,7 @@ class MemoryBuffer {
      * For instance, if(!mem_buffer) mem_buffer.allocate(...)
      */
     explicit operator bool() const {
-        return (_data == nullptr ? false : true);
+        return _data != nullptr;
     }
 
     /**
@@ -146,7 +153,7 @@ class MemoryBuffer {
      * @exception std::invalid_argument if CPU-only build and `mem_type` is not pageable.
     */
     void allocate(size_t n_elements, MemoryType mem_type = MemoryType::PAGEABLE) {
-        if (_data) this->~MemoryBuffer();
+        reset();
 
         if (n_elements == 0) {
             throw std::invalid_argument {
@@ -165,7 +172,7 @@ class MemoryBuffer {
     */
     void to_cpu(MemoryType to_type = MemoryType::PAGEABLE) {
         #ifdef __GPU__
-        if (mem_type == MemoryType::DEVICE && _data) {
+        if (mem_type == MemoryType::DEVICE && _data != nullptr) {
 
             T* tmp = _allocate(to_type, n);
 
@@ -184,7 +191,7 @@ class MemoryBuffer {
     */
     void to_gpu() {
         #ifdef __GPU__
-        if(mem_type != MemoryType::DEVICE && _data) {
+        if(mem_type != MemoryType::DEVICE && _data != nullptr) {
 
             T* tmp = _allocate(MemoryType::DEVICE, n);
 
@@ -267,29 +274,26 @@ class MemoryBuffer {
     */
     size_t size() const {return n;};
 
+    size_t bytes() const {return n * sizeof(T);}
+
     MemoryBuffer(const MemoryBuffer& other) {
 
         n = other.n;
         mem_type = other.mem_type;
         _data = nullptr;
 
-        if (other._data) {
+        if (other) {
             allocate(n, mem_type);
-        }
 
-        if (mem_type == MemoryType::PAGEABLE && other._data) {
-            memcpy(_data, other._data, n * sizeof(T));
+            if (mem_type == MemoryType::PAGEABLE
+             || mem_type == MemoryType::PINNED
+             || mem_type == MemoryType::MANAGED) {
+                memcpy(_data, other._data, n * sizeof(T));
+            }
+            else if (mem_type == MemoryType::DEVICE) {
+                gpuMemcpy(_data, other._data, n * sizeof(T), gpuMemcpyDeviceToDevice);
+            }
         }
-
-        #ifdef __GPU__
-        if(mem_type == MemoryType::PINNED && other._data) {
-            memcpy(_data, other._data, n * sizeof(T));
-        } else if (mem_type == MemoryType::DEVICE && other._data) {
-            gpuMemcpy(_data, other._data, n * sizeof(T), gpuMemcpyDeviceToDevice);
-        } else if (mem_type == MemoryType::MANAGED && other._data) {
-            memcpy(_data, other._data, n * sizeof(T));
-        }
-        #endif
     }
 
     /// @todo other.n should probably be set to 0
@@ -301,34 +305,30 @@ class MemoryBuffer {
 
     MemoryBuffer& operator=(const MemoryBuffer& other){
         if(this == &other) return *this;
-        if(_data) this->~MemoryBuffer();
+        reset();
 
         n = other.n;
         mem_type = other.mem_type;
         _data = nullptr;
 
-        if (other._data) {
+        if (other) {
             allocate(n, mem_type);
+
+            if (mem_type == MemoryType::PAGEABLE
+             || mem_type == MemoryType::PINNED
+             || mem_type == MemoryType::MANAGED) {
+                memcpy(_data, other._data, n * sizeof(T));
+            }
+            else if (mem_type == MemoryType::DEVICE) {
+                gpuMemcpy(_data, other._data, n * sizeof(T), gpuMemcpyDeviceToDevice);
+            }
         }
 
-        if (mem_type == MemoryType::PAGEABLE && other._data) {
-            memcpy(_data, other._data, n * sizeof(T));
-        }
-
-        #ifdef __GPU__
-        if (mem_type == MemoryType::PINNED && other._data) {
-            memcpy(_data, other._data, n * sizeof(T));
-        } else if (mem_type == MemoryType::DEVICE && other._data) {
-            gpuMemcpy(_data, other._data, n * sizeof(T), gpuMemcpyDeviceToDevice);
-        } else if (mem_type == MemoryType::MANAGED && other._data) {
-            memcpy(_data, other._data, n * sizeof(T));
-        }
-        #endif
         return *this;
     }
 
     MemoryBuffer& operator=(MemoryBuffer&& other){
-        if(_data) this->~MemoryBuffer();
+        reset();
         n = other.n;
         mem_type = other.mem_type;
         _data = other._data;
@@ -340,10 +340,7 @@ class MemoryBuffer {
     const T& operator[](int i) const { return _data[i]; }
 
     ~MemoryBuffer() {
-        if (_data) {
-            _deallocate(mem_type, _data, n);
-            _data = nullptr;
-        }
+        this->reset();
     }
 };
 
