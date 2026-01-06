@@ -242,6 +242,16 @@ class Visibilities : public MemoryBuffer<std::complex<float>> {
         return pData;
     }
 
+
+    std::complex<float> *at(unsigned int interval, unsigned int frequency, unsigned int baseline){
+        const size_t nValuesInTimeInterval {this->matrix_size() * nFrequencies};
+        // TODO: use actual frequency instead of a "frequency index". To do so, information must
+        // be provided by the user.
+        std::complex<float> *pData = this->data() + nValuesInTimeInterval * interval + this->matrix_size() * frequency;
+        pData += this->obsInfo.nPolarizations * this->obsInfo.nPolarizations * baseline;
+        return pData;
+    }
+
     /**
      * Number of time intervals integrated over by the correlator.
      */
