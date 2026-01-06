@@ -37,8 +37,6 @@ protected:
      */
     virtual void free(char *ptr, size_t n) const = 0;
 
-    virtual inline const char* name() const = 0;
-
 public:
     AllocationPool() {}
 
@@ -113,7 +111,6 @@ public:
 
             ptr = alloc(n_bytes);
             _total += n_bytes;
-            std::cerr << name() << " ALLOCATED " << n_bytes << " bytes" << std::endl;
 
         } else {
 
@@ -126,7 +123,6 @@ public:
             if (vec.empty()) {
                 unused.erase(it);
             }
-            std::cerr << name() << " REUSED " << n_bytes << " bytes" << std::endl;
         }
 
         return ptr;
@@ -156,10 +152,8 @@ public:
 
         if (_max == 0 || _total <= _max) {
             unused[n_bytes].push_back(ptr);
-            std::cerr << name() << " STASHED " << n_bytes << " bytes" << std::endl;
         } else {
             // if we're low on memory, just free the buffer
-            std::cerr << name() << " FREED " << n_bytes << " bytes" << std::endl;
             this->free(ptr, n_bytes);
             _total -= std::min(n_bytes, _total); // avoid an overflow
         }
@@ -175,7 +169,6 @@ public:
 
         for (auto& [size, vec] : unused) {
             for (auto& mem : vec) {
-                std::cerr << name() << " FREED " << size << " bytes" << std::endl;
                 this->free(mem, size);
                 _total -= size;
             }
@@ -235,7 +228,6 @@ protected:
         delete[] ptr;
     }
 
-    inline const char* name() const override {return "PageableAllocationPool";}
 public:
     // static method for getting singleton instance
     static PageableAllocationPool& instance() {
@@ -246,7 +238,6 @@ public:
     PageableAllocationPool() {};
 
     ~PageableAllocationPool() {
-        std::cerr << name() << " DESTROYED " << unused_bytes() << std::endl;
         this->clear();
     }
 };
@@ -264,7 +255,6 @@ protected:
         gpuFree(ptr);
     }
 
-    inline const char* name() const override {return "DeviceAllocationPool";}
 public:
     // static method for getting singleton instance
     static DeviceAllocationPool& instance() {
@@ -275,7 +265,6 @@ public:
     DeviceAllocationPool() {};
 
     ~DeviceAllocationPool() {
-        std::cerr << name() << " DESTROYED " << unused_bytes() << std::endl;
         this->clear();
     }
 };
@@ -292,7 +281,6 @@ protected:
         gpuHostFree(ptr);
     }
 
-    inline const char* name() const override {return "PinnedAllocationPool";}
 public:
     // static method for getting singleton instance
     static PinnedAllocationPool& instance() {
@@ -303,7 +291,6 @@ public:
     PinnedAllocationPool() {};
 
     ~PinnedAllocationPool() {
-        std::cerr << name() << " DESTROYED " << unused_bytes() << std::endl;
         this->clear();
     }
 };
@@ -320,7 +307,6 @@ protected:
         gpuFree(ptr);
     }
 
-    inline const char* name() const override {return "ManagedAllocationPool";}
 public:
     // static method for getting singleton instance
     static ManagedAllocationPool& instance() {
@@ -331,7 +317,6 @@ public:
     ManagedAllocationPool() {};
 
     ~ManagedAllocationPool() {
-        std::cerr << name() << " DESTROYED " << unused_bytes() << std::endl;
         this->clear();
     }
 };
