@@ -9,10 +9,10 @@
 #include <shared_mutex>
 #include "gpu_macros.hpp"
 
-#ifdef _ALLOCPOOL_OFF
-static constexpr bool disable_allocpool = true;
+#ifdef _ALLOCPOOL_ON
+inline constexpr bool disable_allocpool = false;
 #else
-static constexpr bool disable_allocpool = false;
+inline constexpr bool disable_allocpool = true;
 #endif
 
 class AllocationPool {

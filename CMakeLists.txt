@@ -11,11 +11,10 @@ if(USE_CUDA)
 enable_language(CUDA CXX)
 endif()
 
-if(NOT USE_ALLOCPOOL)
-    add_definitions(-D_ALLOCPOOL_OFF)
-    message("Allocation Pool: DISABLED")
+if(USE_ALLOCPOOL)
+    add_definitions(-D_ALLOCPOOL_ON)
 else()
-    message("Allocation Pool: ENABLED")
+    message("Allocation Pool: DISABLED")
 endif()
 
 
