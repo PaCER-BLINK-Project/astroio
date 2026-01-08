@@ -9,11 +9,7 @@
 #include <shared_mutex>
 #include "gpu_macros.hpp"
 
-#ifdef _ALLOCPOOL_ON
-inline constexpr bool disable_allocpool = false;
-#else
-inline constexpr bool disable_allocpool = true;
-#endif
+extern const bool disable_allocpool;
 
 class AllocationPool {
 
@@ -46,179 +42,69 @@ public:
     /**
      * @brief Set the max number of unused bytes the pool will keep track of.
      */
-    void set_max_size(size_t max) {
-        std::unique_lock lock(mut);
-        this->_max = max;
-    }
+    void set_max_size(size_t max);
 
     /**
      * @brief Get the max number of unused bytes the pool will keep track of.
      */
-    size_t get_max_size() const {
-        std::shared_lock lock(mut);
-        return this->_max;
-    }
+    size_t get_max_size() const;
 
     /**
      * @brief Returns whether any memory buffers are currently unused
      */
-    bool empty() const {
-        std::shared_lock lock(mut);
-        return unused.empty();
-    }
+    bool empty() const;
 
     /**
      * @brief Returns the total bytes currently tracked.
      */
-    size_t total_bytes() const {
-        std::shared_lock lock(mut);
-        return _total;
-    }
+    size_t total_bytes() const;
 
-    size_t unused_bytes() const {
-        std::shared_lock lock(mut);
-        size_t num = 0;
-
-        for (auto& [size, vec] : unused) {
-            num += size * vec.size();
-        }
-
-        return num;
-    }
+    size_t unused_bytes() const;
 
     /**
      * @brief Get a memory buffer from pool of size `n`, allocates new memory if necessary.
      * @param n_bytes Requested size of memory buffer.
      * @return Pointer to memory buffer.
      */
-    char* allocate(size_t n_bytes) {
-        if (n_bytes == 0) {
-            throw std::invalid_argument{
-                "AllocationPool::allocate : n_bytes must be greater than zero"
-            };
-        }
-
-        if (disable_allocpool) {
-            return alloc(n_bytes);
-        }
-
-        std::unique_lock lock(mut);
-
-        char* ptr;
-        auto it = unused.find(n_bytes);
-
-        if (it == unused.end() || it->second.empty()) {
-
-            ptr = alloc(n_bytes);
-            _total += n_bytes;
-
-        } else {
-
-            auto& vec = it->second;
-
-            ptr = vec.back();
-            vec.pop_back();
-
-            // dont leave an empty vector hanging around
-            if (vec.empty()) {
-                unused.erase(it);
-            }
-        }
-
-        return ptr;
-    };
+    char* allocate(size_t n_bytes);
 
     /**
      * @brief Returns memory allocation to the pool.
      */
-    void deallocate(char* ptr, size_t n_bytes) {
-        if (ptr == nullptr) {
-            throw std::invalid_argument{
-                "AllocationPool::deallocate : argument ptr cannot be null"
-            };
-        }
-        if (n_bytes == 0) {
-            throw std::invalid_argument{
-                "AllocationPool::deallocate : n_bytes must be greater than zero"
-            };
-        }
-
-        if (disable_allocpool) {
-            this->free(ptr, n_bytes);
-            return;
-        }
-
-        std::unique_lock lock(mut);
-
-        if (_max == 0 || _total <= _max) {
-            unused[n_bytes].push_back(ptr);
-        } else {
-            // if we're low on memory, just free the buffer
-            this->free(ptr, n_bytes);
-            _total -= std::min(n_bytes, _total); // avoid an overflow
-        }
-    };
+    void deallocate(char* ptr, size_t n_bytes);
 
     /**
      * @brief Frees all currently unused buffers.
      */
-    void clear() {
-        if (disable_allocpool) return;
-
-        std::unique_lock lock(mut);
-
-        for (auto& [size, vec] : unused) {
-            for (auto& mem : vec) {
-                this->free(mem, size);
-                _total -= size;
-            }
-            vec.clear();
-        }
-        unused.clear();
-    };
+    void clear();
 
     /**
      * @brief Free unused buffers until pool is under max size or until all
      *  unused buffers are free.
      * @returns Number of bytes successfully freed.
      */
-    size_t cleanup() {
-        size_t freeable = unused_bytes();
-
-        std::unique_lock lock(mut);
-
-        if (_max == 0 || _total <= _max) return 0;
-
-        size_t to_free = std::min(_total - _max, freeable);
-        size_t freed = 0;
-
-        auto it = unused.begin();
-
-        while (freed < to_free && it != unused.end()) {
-            auto& [key, vec] = *it;
-
-            while (freed < to_free && !vec.empty()) {
-                char* ptr = vec.back();
-                vec.pop_back();
-
-                this->free(ptr, key);
-                _total -= key;
-                freed += key;
-            }
-
-            // if we've freed everything in that vector, erase entry in the map
-            if (vec.empty()) {
-                it = unused.erase(it);
-            } else {
-                ++it;
-            }
-        }
-
-        return freed;
-    }
+    size_t cleanup();
 };
 
-class PageableAllocationPool : public AllocationPool {
+template <typename PoolType>
+class PoolSingleton {
+public:
+    /**
+     * @brief Provides an instance of templated type, an implementation of the
+     * "meyers singleton" pattern.
+     */
+    static PoolType& instance() {
+        static PoolType single;
+        return single;
+    }
+protected:
+    PoolSingleton() = default;
+    ~PoolSingleton() = default;
+};
+
+class PageableAllocationPool:
+    public AllocationPool,
+    public PoolSingleton<PageableAllocationPool> {
 protected:
     char* alloc(size_t n) const override {
         return new char[n];
@@ -229,21 +115,13 @@ protected:
     }
 
 public:
-    // static method for getting singleton instance
-    static PageableAllocationPool& instance() {
-        static PageableAllocationPool single;
-        return single;
-    }
-
-    PageableAllocationPool() {};
-
-    ~PageableAllocationPool() {
-        this->clear();
-    }
+    ~PageableAllocationPool() {this->clear();}
 };
 
 #ifdef __GPU__
-class DeviceAllocationPool : public AllocationPool {
+class DeviceAllocationPool :
+    public AllocationPool,
+    public PoolSingleton<DeviceAllocationPool> {
 protected:
     char* alloc(size_t n) const override {
         char* ptr;
@@ -256,20 +134,12 @@ protected:
     }
 
 public:
-    // static method for getting singleton instance
-    static DeviceAllocationPool& instance() {
-        static DeviceAllocationPool single;
-        return single;
-    }
-
-    DeviceAllocationPool() {};
-
-    ~DeviceAllocationPool() {
-        this->clear();
-    }
+    ~DeviceAllocationPool() {this->clear();}
 };
 
-class PinnedAllocationPool : public AllocationPool {
+class PinnedAllocationPool :
+    public AllocationPool,
+    public PoolSingleton<PinnedAllocationPool> {
 protected:
     char* alloc(size_t n) const override {
         char* ptr;
@@ -282,20 +152,12 @@ protected:
     }
 
 public:
-    // static method for getting singleton instance
-    static PinnedAllocationPool& instance() {
-        static PinnedAllocationPool single;
-        return single;
-    }
-
-    PinnedAllocationPool() {};
-
-    ~PinnedAllocationPool() {
-        this->clear();
-    }
+    ~PinnedAllocationPool() {this->clear();}
 };
 
-class ManagedAllocationPool : public AllocationPool {
+class ManagedAllocationPool :
+    public AllocationPool,
+    public PoolSingleton<ManagedAllocationPool> {
 protected:
     char* alloc(size_t n) const override {
         char* ptr;
@@ -308,17 +170,7 @@ protected:
     }
 
 public:
-    // static method for getting singleton instance
-    static ManagedAllocationPool& instance() {
-        static ManagedAllocationPool single;
-        return single;
-    }
-
-    ManagedAllocationPool() {};
-
-    ~ManagedAllocationPool() {
-        this->clear();
-    }
+    ~ManagedAllocationPool() {this->clear();}
 };
 #endif
 
