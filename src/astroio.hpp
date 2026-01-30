@@ -59,9 +59,9 @@ extern const ObservationInfo VCS_OBSERVATION_INFO;
 extern const ObservationInfo EDA2_OBSERVATION_INFO;
 /**
  * @brief Voltage data making up an observation recorded by a radiotelescope.
- * 
+ *
  * Data is stored as an array `data` of 16-bit complex samples, 8 bits for the real
- * part and 8 bits for the complex one. Telescope and observation characteristics 
+ * part and 8 bits for the complex one. Telescope and observation characteristics
  * are collected into the `obsInfo` attribute. Data layout facilitates the integration
  * operation over `nIntegrationSteps` time steps. In particular, the array data represents
  * a multidimentional matrix whose dimensions are
@@ -103,7 +103,7 @@ class Voltages : public MemoryBuffer<std::complex<int8_t>> {
         obsInfo = other.obsInfo;
         nIntegrationSteps = other.nIntegrationSteps;
     }
-    
+
     /**
      * Return the number of complex samples in the array.
      */
@@ -118,17 +118,18 @@ class Voltages : public MemoryBuffer<std::complex<int8_t>> {
      * When reading the file, this method will also reorder the data such that the final layout is
      *      [time_interval][channel][station][polarization][complexity][integration_step]
      * where the number of time intervals is ceil(time / nIntegrationSteps)
-     * 
+     *
      * @param filename: path to the .dat file.
      * @param obsInfo; metadata information regarding the obervation. For VCS data, you can use the constant
      * VCS_OVSERVATION_INFO.
      * @param nIntegrationSteps: number of timesteps to integrate over when/if data will be correlated.
+     * @param pinned store the voltages in pinned (non pageable) memory.
      * @param edge: set to zero `edge` channels at the top and the bottom of the frequency band.
      * @param timestepsPerRead: number of timesteps o read from the file at each read call. Might be useful
      * to optimise memory consumption.
      * @return A new instance of the Voltage class.
      */
-    static Voltages from_dat_file(const std::string& filename, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps);
+    static Voltages from_dat_file(const std::string& filename, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps, bool pinned = false);
 
     static Voltages from_dat_file_gpu(const std::string& filename, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps);
     /**
@@ -139,19 +140,19 @@ class Voltages : public MemoryBuffer<std::complex<int8_t>> {
      * When reading the file, this method will also reorder the data such that the final layout is
      *      [time_interval][channel][station][polarization][integration_step][complexity]
      * where the number of time intervals is ceil(time / nIntegrationSteps)
-     * 
+     *
      * @param buffer: memory buffer where to read data from.
      * @param length: number of items in the buffer.
      * @param obsInfo; metadata information regarding the obervation. For VCS data, you can use the constant
      * VCS_OVSERVATION_INFO.
      * @param nIntegrationSteps: number of timesteps to integrate over when/if data will be correlated.
-     * @param use_pinned_mem: if GPU support is enabled, gives the option to pin CPU memory for fast memory
+     * @param pinned: if GPU support is enabled, gives the option to pin CPU memory for fast memory
      * transfers to GPU.
      * @return A new instance of the Voltage class.
-     * 
+     *
      * TODO: check if we need the edge feature.
      */
-    static Voltages from_memory(const int8_t *buffer, size_t length, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps);
+    static Voltages from_memory(const int8_t *buffer, size_t length, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps, bool pinned = false);
 
 
 
@@ -159,20 +160,20 @@ class Voltages : public MemoryBuffer<std::complex<int8_t>> {
      * Read EDA2 voltage data from a binary dump of the corresponding HDF5 file.
      * (This is mainly used for testing purposes, we should probably read the HDF5 file directly)
     */
-    static Voltages from_eda2_file(const std::string& filename, const ObservationInfo& obs_info, unsigned int nIntegrationSteps);
+    static Voltages from_eda2_file(const std::string& filename, const ObservationInfo& obs_info, unsigned int nIntegrationSteps, bool pinned = false);
 
 };
 
 
 /**
  * @brief Correlated voltages, also known as visibilities.
- * 
+ *
  * Obtained by cross correlating voltages, visibilities are then typically subject to an averaging
  * over time and frequency. This information is stored in the `nIntegrationSteps` and
  * `nAveragedChannels` class attributes. The latter indicates how many contiguous channels are
  * averaged to reduce the original number of frequencies to `nFrequecies` in the final `data` array.
- * 
- * The array `data` 
+ *
+ * The array `data`
  */
 class Visibilities : public MemoryBuffer<std::complex<float>> {
     public:
@@ -258,7 +259,7 @@ class Visibilities : public MemoryBuffer<std::complex<float>> {
     size_t integration_intervals() const {
         return (obsInfo.nTimesteps + nIntegrationSteps - 1) / nIntegrationSteps;
     }
-    
+
     // Number of complex visibilities in one frequency channel.
     size_t matrix_size() const {
         const size_t n_baselines {((obsInfo.nAntennas + 1) * obsInfo.nAntennas) / 2};
@@ -270,10 +271,10 @@ class Visibilities : public MemoryBuffer<std::complex<float>> {
         const size_t nValuesInTimeInterval {this->matrix_size() * nFrequencies};
         return this->integration_intervals() * nValuesInTimeInterval;
     }
-    
+
     /**
      * @brief Save visibilities to a FITS file on disk.
-     * 
+     *
      * @param filename name of the output file.
      */
     void to_fits_file(const std::string& filename) const;
@@ -281,7 +282,7 @@ class Visibilities : public MemoryBuffer<std::complex<float>> {
 
     /**
      * @brief Save visibilities to a FITS file on disk using MWAX format.
-     * 
+     *
      * @param filename name of the output file.
      */
     void to_fits_file_mwax(const std::string& filename, int coarse_channel_idx) const;
@@ -289,7 +290,7 @@ class Visibilities : public MemoryBuffer<std::complex<float>> {
 
     /**
      * @brief Load visibilities from a FITS file.
-     * 
+     *
      * @param filename path to the FITS file to read visibilities from.
      * @param oInfo Information about the observation. Default assumes data come from the MWA VCS dataser.
      * @return Visibilities instance.
@@ -299,7 +300,7 @@ class Visibilities : public MemoryBuffer<std::complex<float>> {
 
 
 /**
- * @brief Extract information, such as obsid, coarse channel and timestamp, contained in the name 
+ * @brief Extract information, such as obsid, coarse channel and timestamp, contained in the name
  * of the .dat file where MWA Phase I voltages are stored.
  * @param file_path path to the .dat file.
  * @return `obs_info` - An ObservationInfo object containing information relative to the voltages
@@ -309,9 +310,9 @@ ObservationInfo parse_mwa_phase1_dat_file_info(const std::string& file_path);
 
 
 /**
- * @brief 
- * 
- * @param file_list: the list of paths to .dat files making up on or more MWA observations to be 
+ * @brief
+ *
+ * @param file_list: the list of paths to .dat files making up on or more MWA observations to be
  * processed. The files will be sorted by observation ID and then timestamp. Consecutive 24 .dat
  * files make up a second of observation over the entire MWA frequency bandwidth and will be
  * processed together. Hence, the total number of files must be a multiple of 24.
@@ -324,7 +325,7 @@ std::vector<std::vector<DatFile>> parse_mwa_dat_files(std::vector<std::string>& 
 /**
  * @brief Get all the dat files in a directory. Optionally, only select the dat files corresponding
  * to a certain range of seconds, specified with an offset from the first second and a count.
- * 
+ *
  * @param directory: path to the directory containing the .dat files
  * @param offset: offset in number of seconds from the start of the observation.
  * @param count: number of seconds to consider, starting from the offset.

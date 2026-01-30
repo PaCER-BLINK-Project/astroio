@@ -68,7 +68,7 @@ namespace {
 
 
 
-Voltages Voltages::from_dat_file(const std::string& filename, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps){
+Voltages Voltages::from_dat_file(const std::string& filename, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps, bool pinned) {
     // TODO: fix edge usage.
     const unsigned int edge {0}, timestepsPerRead {100u};
     std::ifstream fin;
@@ -78,7 +78,7 @@ Voltages Voltages::from_dat_file(const std::string& filename, const ObservationI
         throw std::exception();
     }
     if(!lookupInitialized) build_eight_bit_lookup();
-    const size_t bytesPerComplexSample {1}; // 4+4 bits 
+    const size_t bytesPerComplexSample {1}; // 4+4 bits
     const size_t nSamplesInTimestep {obsInfo.nFrequencies * obsInfo.nAntennas *  obsInfo.nPolarizations};
     const size_t bytesPerTimestep {nSamplesInTimestep * bytesPerComplexSample};
     const size_t bytesPerRead {timestepsPerRead * bytesPerTimestep};
@@ -96,11 +96,13 @@ Voltages Voltages::from_dat_file(const std::string& filename, const ObservationI
     const size_t samplesInFrequency {samplesInAntenna * obsInfo.nAntennas};
     const size_t samplesInTimeInterval {samplesInFrequency * obsInfo.nFrequencies};
     const size_t nIntegrationIntervals {(obsInfo.nTimesteps + nIntegrationSteps - 1)/ nIntegrationSteps };
+
+    const auto memtype = pinned ? MemoryType::PINNED : MemoryType::PAGEABLE;
     /*
         We allocate slightly more memory than simply nComplexSamples so we can avoid dealing with
-        the boundary condition happening when obsInfo.nTimesteps % nIntegrationSteps != 0. 
+        the boundary condition happening when obsInfo.nTimesteps % nIntegrationSteps != 0.
     */
-    MemoryBuffer<std::complex<int8_t>> mbVoltages {nIntegrationIntervals * samplesInTimeInterval};
+    MemoryBuffer<std::complex<int8_t>> mbVoltages {nIntegrationIntervals * samplesInTimeInterval, memtype};
     auto voltages = mbVoltages.data();
     memset(voltages, 0, sizeof(std::complex<int8_t>) * nIntegrationIntervals * samplesInTimeInterval);
 
@@ -128,7 +130,7 @@ Voltages Voltages::from_dat_file(const std::string& filename, const ObservationI
                     voltages[outIndex + currentIntegratorStep].imag(expanded[1]);
                     voltages[outIndex + samplesInPol + currentIntegratorStep].real(expanded[2]);
                     voltages[outIndex + samplesInPol + currentIntegratorStep].imag(expanded[3]);
-                    
+
                     sample_idx += 2; // advances 2 samples at a time
                 }
             }
@@ -254,13 +256,13 @@ Voltages Voltages::from_dat_file_gpu(const std::string& filename, const Observat
 }
 #else
 Voltages Voltages::from_dat_file_gpu(const std::string& filename, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps){
-    throw std::runtime_error("from_dat_file_gpu cannot be called on a CPU-only compile of the code."); 
+    throw std::runtime_error("from_dat_file_gpu cannot be called on a CPU-only compile of the code.");
 }
 #endif
 
 
-Voltages Voltages::from_memory(const int8_t *buffer, size_t length, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps){
-    const size_t bytesPerComplexSample {2}; // 4+4 bits 
+Voltages Voltages::from_memory(const int8_t *buffer, size_t length, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps, bool pinned) {
+    const size_t bytesPerComplexSample {2}; // 4+4 bits
     const size_t nSamplesInTimestep {obsInfo.nFrequencies * obsInfo.nAntennas *  obsInfo.nPolarizations};
     const size_t nComplexSamples {obsInfo.nTimesteps * nSamplesInTimestep};
     const size_t samplesSize {nComplexSamples * bytesPerComplexSample};
@@ -276,11 +278,13 @@ Voltages Voltages::from_memory(const int8_t *buffer, size_t length, const Observ
     size_t currentIntegratorStep;
     const size_t nIntegrationIntervals {(obsInfo.nTimesteps + nIntegrationSteps - 1)/ nIntegrationSteps };
     size_t sample_idx {0};
+
+    const auto memtype = pinned ? MemoryType::PINNED : MemoryType::PAGEABLE;
     /*
         We allocate slightly more memory than simply nComplexSamples so we can avoid dealing with
-        the boundary condition happening when obsInfo.nTimesteps % nIntegrationSteps != 0. 
+        the boundary condition happening when obsInfo.nTimesteps % nIntegrationSteps != 0.
     */
-    MemoryBuffer<std::complex<int8_t>> mbVoltages {nIntegrationIntervals * samplesInTimeInterval};
+    MemoryBuffer<std::complex<int8_t>> mbVoltages {nIntegrationIntervals * samplesInTimeInterval, memtype};
     auto voltages = mbVoltages.data();
     memset(voltages, 0, sizeof(std::complex<int8_t>) * nIntegrationIntervals * samplesInTimeInterval);
     for(size_t ts = 0; ts < obsInfo.nTimesteps; ts++){
@@ -293,7 +297,7 @@ Voltages Voltages::from_memory(const int8_t *buffer, size_t length, const Observ
                 voltages[outIndex + currentIntegratorStep].real(buffer[sample_idx++]);
                 voltages[outIndex + currentIntegratorStep].imag(buffer[sample_idx++]);
                 voltages[outIndex + samplesInPol + currentIntegratorStep].real(buffer[sample_idx++]);
-                voltages[outIndex + samplesInPol + currentIntegratorStep].imag(buffer[sample_idx++]);         
+                voltages[outIndex + samplesInPol + currentIntegratorStep].imag(buffer[sample_idx++]);
             }
         }
     }
@@ -302,12 +306,12 @@ Voltages Voltages::from_memory(const int8_t *buffer, size_t length, const Observ
 
 
 
-Voltages Voltages::from_eda2_file(const std::string& filename, const ObservationInfo& obs_info, unsigned int nIntegrationSteps){
+Voltages Voltages::from_eda2_file(const std::string& filename, const ObservationInfo& obs_info, unsigned int nIntegrationSteps, bool pinned) {
     // TODO: more efficient implementation
     char *buffer {nullptr};
     size_t size {0};
     read_data_from_file(filename, buffer, size);
-    auto volt = Voltages::from_memory(reinterpret_cast<int8_t*>(buffer), size, obs_info, nIntegrationSteps);
+    auto volt = Voltages::from_memory(reinterpret_cast<int8_t*>(buffer), size, obs_info, nIntegrationSteps, pinned);
     delete[] buffer;
     return volt;
 }
@@ -324,7 +328,7 @@ Visibilities Visibilities::from_fits_file(const std::string& filename, const Obs
 
     unsigned int nIntegrationIntervals {static_cast<unsigned int>(nHDUs)}, nAveragedChannels;
     unsigned int nIntegrationSteps {obsInfo.nTimesteps / nIntegrationIntervals};
-    
+
     size_t xcorrSize {obsInfo.nFrequencies * matrixSize * nIntegrationIntervals};
 
     MemoryBuffer<std::complex<float>> mbXcorr {xcorrSize};
@@ -357,7 +361,7 @@ Visibilities Visibilities::from_fits_file(const std::string& filename, const Obs
 
 void Visibilities::to_fits_file(const std::string& filename) const{
     FITS fitsImage {filename, FITS::Mode::WRITE};
-    const size_t nFrequencies {obsInfo.nFrequencies / nAveragedChannels}; 
+    const size_t nFrequencies {obsInfo.nFrequencies / nAveragedChannels};
     // one axis for matrix, one for frequency
     float integrationTime {static_cast<float>(obsInfo.timeResolution * nIntegrationSteps)};
     for(unsigned int interval {0}; interval < this->integration_intervals(); interval++){
@@ -443,7 +447,7 @@ void Visibilities::to_fits_file_mwax(const std::string& filename, int coarse_cha
 
 
 /**
- * @brief Extract information, such as obsid, coarse channel and timestamp, contained in the name 
+ * @brief Extract information, such as obsid, coarse channel and timestamp, contained in the name
  * of the .dat file where MWA Phase I voltages are stored.
  * @param file_path path to the .dat file.
  * @return `obs_info` - An ObservationInfo object containing information relative to the voltages
@@ -470,9 +474,9 @@ ObservationInfo parse_mwa_phase1_dat_file_info(const std::string& file_path){
 
 
 /**
- * @brief 
- * 
- * @param file_list: the list of paths to .dat files making up on or more MWA observations to be 
+ * @brief
+ *
+ * @param file_list: the list of paths to .dat files making up on or more MWA observations to be
  * processed. The files will be sorted by observation ID and then timestamp. Consecutive 24 .dat
  * files make up a second of observation over the entire MWA frequency bandwidth and will be
  * processed together. Hence, the total number of files must be a multiple of 24.
@@ -488,7 +492,7 @@ std::vector<std::vector<DatFile>> parse_mwa_dat_files(std::vector<std::string>& 
     // Each observation is a list of .dat files.
     std::string current_observation_id {};
     time_t current_second {0ull};
-    
+
     std::vector<std::vector<DatFile>> observation {};
     std::vector<DatFile> one_second_data {};
 
@@ -531,7 +535,7 @@ std::vector<std::vector<DatFile>> parse_mwa_dat_files(std::vector<std::string>& 
 /**
  * @brief Get all the dat files in a directory. Optionally, only select the dat files corresponding
  * to a certain range of seconds, specified with an offset from the first second and a count.
- * 
+ *
  * @param directory: path to the directory containing the .dat files
  * @param offset: offset in number of seconds from the start of the observation.
  * @param count: number of seconds to consider, starting from the offset.
