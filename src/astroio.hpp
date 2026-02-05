@@ -123,13 +123,12 @@ class Voltages : public MemoryBuffer<std::complex<int8_t>> {
      * @param obsInfo; metadata information regarding the obervation. For VCS data, you can use the constant
      * VCS_OVSERVATION_INFO.
      * @param nIntegrationSteps: number of timesteps to integrate over when/if data will be correlated.
-     * @param pinned store the voltages in pinned (non pageable) memory.
      * @param edge: set to zero `edge` channels at the top and the bottom of the frequency band.
      * @param timestepsPerRead: number of timesteps o read from the file at each read call. Might be useful
      * to optimise memory consumption.
      * @return A new instance of the Voltage class.
      */
-    static Voltages from_dat_file(const std::string& filename, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps, bool pinned = false);
+    static Voltages from_dat_file(const std::string& filename, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps);
 
     static Voltages from_dat_file_gpu(const std::string& filename, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps);
     /**
@@ -146,13 +145,11 @@ class Voltages : public MemoryBuffer<std::complex<int8_t>> {
      * @param obsInfo; metadata information regarding the obervation. For VCS data, you can use the constant
      * VCS_OVSERVATION_INFO.
      * @param nIntegrationSteps: number of timesteps to integrate over when/if data will be correlated.
-     * @param pinned: if GPU support is enabled, gives the option to pin CPU memory for fast memory
-     * transfers to GPU.
      * @return A new instance of the Voltage class.
      *
      * TODO: check if we need the edge feature.
      */
-    static Voltages from_memory(const int8_t *buffer, size_t length, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps, bool pinned = false);
+    static Voltages from_memory(const int8_t *buffer, size_t length, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps);
 
 
 
@@ -160,7 +157,7 @@ class Voltages : public MemoryBuffer<std::complex<int8_t>> {
      * Read EDA2 voltage data from a binary dump of the corresponding HDF5 file.
      * (This is mainly used for testing purposes, we should probably read the HDF5 file directly)
     */
-    static Voltages from_eda2_file(const std::string& filename, const ObservationInfo& obs_info, unsigned int nIntegrationSteps, bool pinned = false);
+    static Voltages from_eda2_file(const std::string& filename, const ObservationInfo& obs_info, unsigned int nIntegrationSteps);
 
 };
 

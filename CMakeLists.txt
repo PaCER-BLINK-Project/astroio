@@ -6,6 +6,7 @@ include(CTest)
 option(USE_CUDA "Compile the code with NVIDIA GPU support." OFF)
 option(USE_HIP "Compile the code with AMD GPU support." OFF)
 option(USE_ALLOCPOOL "Compile with allocation pool enabled." ON)
+option(USE_PINNED_VOLTAGES "Use pinned host memory for voltages." OFF)
 
 if(USE_CUDA)
 enable_language(CUDA CXX)
@@ -16,6 +17,10 @@ if( NOT USE_ALLOCPOOL )
     message("Allocation Pool: DISABLED")
 endif()
 
+if( USE_PINNED_VOLTAGES )
+    add_definitions(-D_PINNED_VOLTAGES)
+    message("Pinned Voltages: ENABLED")
+endif()
 
 # External dependencies
 find_library(CFITSIO_LIB cfitsio HINTS ENV LD_LIBRARY_PATH)

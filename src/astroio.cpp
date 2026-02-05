@@ -10,6 +10,12 @@
 #include "astroio.hpp"
 #include "files.hpp"
 
+#ifdef _PINNED_VOLTAGES
+constexpr bool pinned_voltages = true;
+#else
+constexpr bool pinned_voltages = false;
+#endif
+
 extern const ObservationInfo VCS_OBSERVATION_INFO {
     .nAntennas = 128u,
     .nFrequencies = 128u,
@@ -68,7 +74,7 @@ namespace {
 
 
 
-Voltages Voltages::from_dat_file(const std::string& filename, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps, bool pinned) {
+Voltages Voltages::from_dat_file(const std::string& filename, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps) {
     // TODO: fix edge usage.
     const unsigned int edge {0}, timestepsPerRead {100u};
     std::ifstream fin;
@@ -97,7 +103,8 @@ Voltages Voltages::from_dat_file(const std::string& filename, const ObservationI
     const size_t samplesInTimeInterval {samplesInFrequency * obsInfo.nFrequencies};
     const size_t nIntegrationIntervals {(obsInfo.nTimesteps + nIntegrationSteps - 1)/ nIntegrationSteps };
 
-    const auto memtype = pinned ? MemoryType::PINNED : MemoryType::PAGEABLE;
+    constexpr MemoryType memtype = pinned_voltages ? MemoryType::PINNED : MemoryType::PAGEABLE;
+
     /*
         We allocate slightly more memory than simply nComplexSamples so we can avoid dealing with
         the boundary condition happening when obsInfo.nTimesteps % nIntegrationSteps != 0.
@@ -261,7 +268,7 @@ Voltages Voltages::from_dat_file_gpu(const std::string& filename, const Observat
 #endif
 
 
-Voltages Voltages::from_memory(const int8_t *buffer, size_t length, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps, bool pinned) {
+Voltages Voltages::from_memory(const int8_t *buffer, size_t length, const ObservationInfo& obsInfo, unsigned int nIntegrationSteps) {
     const size_t bytesPerComplexSample {2}; // 4+4 bits
     const size_t nSamplesInTimestep {obsInfo.nFrequencies * obsInfo.nAntennas *  obsInfo.nPolarizations};
     const size_t nComplexSamples {obsInfo.nTimesteps * nSamplesInTimestep};
@@ -279,7 +286,7 @@ Voltages Voltages::from_memory(const int8_t *buffer, size_t length, const Observ
     const size_t nIntegrationIntervals {(obsInfo.nTimesteps + nIntegrationSteps - 1)/ nIntegrationSteps };
     size_t sample_idx {0};
 
-    const auto memtype = pinned ? MemoryType::PINNED : MemoryType::PAGEABLE;
+    constexpr auto memtype = pinned_voltages ? MemoryType::PINNED : MemoryType::PAGEABLE;
     /*
         We allocate slightly more memory than simply nComplexSamples so we can avoid dealing with
         the boundary condition happening when obsInfo.nTimesteps % nIntegrationSteps != 0.
@@ -306,12 +313,12 @@ Voltages Voltages::from_memory(const int8_t *buffer, size_t length, const Observ
 
 
 
-Voltages Voltages::from_eda2_file(const std::string& filename, const ObservationInfo& obs_info, unsigned int nIntegrationSteps, bool pinned) {
+Voltages Voltages::from_eda2_file(const std::string& filename, const ObservationInfo& obs_info, unsigned int nIntegrationSteps) {
     // TODO: more efficient implementation
     char *buffer {nullptr};
     size_t size {0};
     read_data_from_file(filename, buffer, size);
-    auto volt = Voltages::from_memory(reinterpret_cast<int8_t*>(buffer), size, obs_info, nIntegrationSteps, pinned);
+    auto volt = Voltages::from_memory(reinterpret_cast<int8_t*>(buffer), size, obs_info, nIntegrationSteps);
     delete[] buffer;
     return volt;
 }
