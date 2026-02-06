@@ -50,26 +50,35 @@ char* AllocationPool::allocate(size_t n_bytes) {
         return alloc(n_bytes);
     }
 
-    std::unique_lock lock(mut);
-
     char* ptr;
-    auto it = unused.find(n_bytes);
+    bool need_alloc = false;
 
-    if (it == unused.end() || it->second.empty()) {
+    // get lock to find unused buffer
+    {
+        std::unique_lock lock(mut);
 
+        auto it = unused.find(n_bytes);
+        if (it != unused.end() && !it->second.empty()) {
+            auto& vec = it->second;
+            ptr = vec.back();
+            vec.pop_back();
+
+            if (vec.empty()) {
+                unused.erase(it);
+            }
+        } else {
+            need_alloc = true;
+        }
+    }
+
+    // release lock while calling alloc (can be long-running, doesn't need the lock)
+    if (need_alloc) {
         ptr = alloc(n_bytes);
-        _total += n_bytes;
 
-    } else {
-
-        auto& vec = it->second;
-
-        ptr = vec.back();
-        vec.pop_back();
-
-        // dont leave an empty vector hanging around
-        if (vec.empty()) {
-            unused.erase(it);
+        // get lock again to update _total
+        {
+            std::unique_lock lock(mut);
+            _total += n_bytes;
         }
     }
 
