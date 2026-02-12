@@ -141,7 +141,7 @@ class MemoryBuffer {
     /**
      * @brief Dump contents to a binary file.
      */
-    void dump(std::string filename) const {
+    void dump(std::string filename) {
         this->to_cpu();
         std::ofstream outfile;
         outfile.open(filename, std::ofstream::binary);

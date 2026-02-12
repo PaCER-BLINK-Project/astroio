@@ -14,6 +14,7 @@ constexpr bool gpu_support() { return true;}
 // automatically when using "gpu*" calls.
 
 #ifdef __NVCC__
+#include <cuda_runtime.h>
 #define gpuError_t cudaError_t
 #define gpuSuccess cudaSuccess
 #define gpuGetErrorString cudaGetErrorString
