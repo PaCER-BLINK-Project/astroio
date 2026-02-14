@@ -131,6 +131,8 @@ class FITS {
             this->header.insert({key, he});
         }
 
+        // Cristian ? Isn't not a bug "char* const" vs. "const char*" ?
+        // Plus not sure if this is needed 
         void add_keyword(const std::string key, char* const value, const std::string comment){
             HeaderEntry he;
             he.keyword = key;
@@ -200,7 +202,7 @@ class FITS {
          * @param x_dim: dimension of the image along the orizontal axis.
          * @param y_dim: dimension of the image along the vertical axis.
         */
-        void set_image(int bitpix, char *data, long x_dim, long y_dim);
+        void set_image(int bitpix, char *data, long x_dim, long y_dim);            
 
         template <typename T>
         void set_image(T *data, long xDim, long yDim){
@@ -224,6 +226,8 @@ class FITS {
             axes[1] = yDim;
         }
 
+        // add WCS keywords for dynamic spectrum
+        void set_dynspec_wcs_keywords(float freq_start, float delta_freq, float time_start, float delta_time);
 
 
         bool operator==(const HDU& other) const {
