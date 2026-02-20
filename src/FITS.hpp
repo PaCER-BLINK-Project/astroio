@@ -226,10 +226,6 @@ class FITS {
             axes[1] = yDim;
         }
 
-        // add WCS keywords for dynamic spectrum
-        void set_dynspec_wcs_keywords(float freq_start, float delta_freq, float time_start, float delta_time);
-
-
         bool operator==(const HDU& other) const {
             if(axes[0] != other.axes[0] || axes[1] != other.axes[1] || 
                 bitpix != other.bitpix) return false;

@@ -73,28 +73,6 @@ void FITS::HDU::set_image(int bitpix, char *data, long xDim, long yDim){
     }
 }
 
-void FITS::HDU::set_dynspec_wcs_keywords(float freq_start, float delta_freq, float time_start, float delta_time) {
-   char szString[64];
-   std::string empty_string;
-   
-   add_keyword(std::string("CTYPE2"),std::string("FREQUENCY"),empty_string);
-   add_keyword(std::string("CUNIT2"),std::string("MHz"),empty_string);
-   add_keyword(std::string("CRPIX2"),std::string("1"),empty_string);
-   sprintf(szString,"%.6f",freq_start);
-   add_keyword(std::string("CRVAL2"),std::string(szString),empty_string);
-   sprintf(szString,"%.6f",delta_freq);
-   add_keyword(std::string("CDELT2"),std::string(szString),empty_string);
-   
-   add_keyword(std::string("CTYPE1"),std::string("TIME"),empty_string);
-   add_keyword(std::string("CUNIT1"),std::string("sec"),empty_string);
-   add_keyword(std::string("CRPIX1"),std::string("1"),empty_string);
-   add_keyword(std::string("CRVAL1"),std::string("0"),empty_string);
-   sprintf(szString,"%.6f",delta_time);
-   add_keyword(std::string("CDELT1"),std::string(szString),empty_string);
-   add_keyword(std::string("INTTIME"),std::string(szString),empty_string);
-}
-
-
 void FITS::read(){
     std::ifstream fp {filename.c_str()};
     if(!fp.good()){
